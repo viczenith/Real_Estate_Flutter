@@ -1,0 +1,1262 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:real_estate_app/admin/models/add_estate_plot_model.dart';
+import 'package:real_estate_app/admin/models/admin_chat_model.dart';
+import 'package:real_estate_app/admin/models/admin_dashboard_data.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart'; 
+import 'dart:io';
+import 'package:real_estate_app/admin/models/add_plot_size.dart';
+// ignore: unused_import
+import 'package:real_estate_app/admin/models/add_amenities_model.dart';
+import 'package:real_estate_app/admin/models/estate_details_model.dart';
+// ignore: unused_import
+import 'package:real_estate_app/admin/models/admin_user_registration.dart';
+import 'package:real_estate_app/admin/models/plot_allocation_model.dart';
+import 'package:real_estate_app/admin/models/plot_size_number_model.dart';
+
+class ApiService {
+  final String baseUrl = 'http://192.168.110.208:8000/api';
+
+
+
+  /// Login using username and password.
+  Future<String> login(String email, String password) async {
+    final url = '$baseUrl/api-token-auth/';
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      // Send "email" field, as the backend requires it.
+      body: jsonEncode({'email': email, 'password': password}),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['token'];
+    } else {
+      throw Exception('Login failed: ${response.body}');
+    }
+  }
+
+  // User Registration API Call
+  Future<void> registerAdminUser(Map<String, dynamic> userData, String token) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/admin-user-registration/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Token $token',
+      },
+      body: jsonEncode(userData),
+    );
+
+    if (response.statusCode != 201) {
+      throw Exception('Failed to register user: ${response.body}');
+    }
+  }
+
+
+  // Fetch clients from the backend
+    Future<List<Map<String, dynamic>>> fetchClients(String token) async {
+    final url = Uri.parse('$baseUrl/clients/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((e) => e as Map<String, dynamic>).toList();
+    } else {
+      throw Exception('Failed to load clients: ${response.statusCode}');
+    }
+  }
+
+  // Get client detail
+  Future<Map<String, dynamic>> getClientDetail({
+    required int clientId,
+    required String token,
+  }) async {
+    final url = Uri.parse('$baseUrl/client/$clientId/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['profile_image'] != null && !data['profile_image'].startsWith('http')) {
+        data['profile_image'] = '$baseUrl${data['profile_image']}';
+      }
+      return data;
+    } else {
+      throw Exception('Failed to fetch client details');
+    }
+  }
+
+  // Update client profile
+  Future<void> updateClientProfile({
+    required int clientId,
+    required String token,
+    String? fullName,
+    String? about,
+    String? company,
+    String? job,
+    String? country,
+    String? address,
+    String? phone,
+    String? email,
+    File? profileImage,
+  }) async {
+    final uri = Uri.parse('$baseUrl/client/$clientId/');
+    final request = http.MultipartRequest('PUT', uri);
+
+    // Auth token
+    request.headers['Authorization'] = 'Token $token';
+    request.headers['Accept'] = 'application/json';
+
+    // Helper to add only non-null, non-empty fields
+    void addField(String key, String? value) {
+      if (value != null && value.isNotEmpty) {
+        request.fields[key] = value;
+      }
+    }
+
+    addField('full_name', fullName);
+    addField('about', about);
+    addField('company', company);
+    addField('job', job);
+    addField('country', country);
+    addField('address', address);
+    addField('phone', phone);
+    addField('email', email);
+
+    // Attach image file if present
+    if (profileImage != null) {
+      request.files.add(await http.MultipartFile.fromPath(
+        'profile_image',
+        profileImage.path,
+      ));
+    }
+
+    // Send request
+    final response = await request.send();
+
+    // Handle response
+    if (response.statusCode != 200) {
+      final responseBody = await response.stream.bytesToString();
+      throw Exception('Failed to update client: $responseBody');
+    }
+  }
+
+
+
+  // Delete client
+  Future<bool> deleteClient(String token, String clientId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/client/$clientId/'),
+      headers: {
+        'Authorization': 'Token $token',
+      },
+    );
+
+    if (response.statusCode == 204) {
+      return true;
+    } else {
+      throw Exception('Failed to delete client');
+    }
+  }
+
+
+  // Fetch marketers from the backend
+  Future<List<Map<String, dynamic>>> fetchMarketers(String token) async {
+    final url = Uri.parse('$baseUrl/marketers/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((e) => e as Map<String, dynamic>).toList();
+    } else {
+      throw Exception('Failed to load marketers: ${response.statusCode}');
+    }
+  }
+
+ // Get marketer detail
+  Future<Map<String, dynamic>> getMarketerDetail({
+    required int marketerId,
+    required String token,
+  }) async {
+    final url = Uri.parse('$baseUrl/marketers/$marketerId/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      // Check if the profile_image field is not null and handle dynamic URLs
+      if (data['profile_image'] != null && !data['profile_image'].startsWith('http')) {
+        data['profile_image'] = '$baseUrl${data['profile_image']}';
+      }
+
+      return data;
+    } else {
+      throw Exception('Failed to fetch marketer details');
+    }
+  }
+
+  // Update marketer profile
+  Future<void> updateMarketerProfile({
+    required int marketerId,
+    required String token,
+    String? fullName,
+    String? about,
+    String? company,
+    String? job,
+    String? country,
+    String? address,
+    String? phone,
+    String? email,
+    File? profileImage,
+  }) async {
+    final uri = Uri.parse('$baseUrl/marketers/$marketerId/');
+    final request = http.MultipartRequest('PUT', uri);
+
+    // Auth token
+    request.headers['Authorization'] = 'Token $token';
+    request.headers['Accept'] = 'application/json';
+
+    // Helper to add only non-null, non-empty fields
+    void addField(String key, String? value) {
+      if (value != null && value.isNotEmpty) {
+        request.fields[key] = value;
+      }
+    }
+
+    addField('full_name', fullName);
+    addField('about', about);
+    addField('company', company);
+    addField('job', job);
+    addField('country', country);
+    addField('address', address);
+    addField('phone', phone);
+    addField('email', email);
+
+    // Attach image file if present
+    if (profileImage != null) {
+      request.files.add(await http.MultipartFile.fromPath(
+        'profile_image',
+        profileImage.path,
+      ));
+    }
+
+    // Send request
+    final response = await request.send();
+
+    // Handle response
+    if (response.statusCode != 200) {
+      final responseBody = await response.stream.bytesToString();
+      throw Exception('Failed to update marketer: $responseBody');
+    }
+  }
+
+
+
+  // Delete marketer
+  Future<bool> deleteMarketer(String token, String id) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/marketers/$id/'),
+      headers: {
+        'Authorization': 'Token $token',
+      },
+    );
+
+    if (response.statusCode == 204) {
+      return true;
+    } else {
+      throw Exception('Failed to delete marketer');
+    }
+  }
+
+
+
+  
+
+  /// Get the current user's profile.
+  Future<Map<String, dynamic>> getUserProfile(String token) async {
+    final url = '$baseUrl/users/me/';
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Token $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load user profile: ${response.body}');
+    }
+  }
+
+  /// Fetch Admin Dashboard Data from the dynamic JSON endpoint.
+  Future<AdminDashboardData> fetchAdminDashboard(String token) async {
+    final url = '$baseUrl/admin/dashboard-data/';
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Token $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return AdminDashboardData.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to load dashboard data: ${response.body}');
+    }
+  }
+
+  /// Fetch a list of estates from the admin estate list endpoint.
+  // Future<List<dynamic>> fetchAdminEstateList(String token) async {
+  //   final url = '$baseUrl/admin/estate-list/';
+  //   final response = await http.get(
+  //     Uri.parse(url),
+  //     headers: {
+  //       'Content-Type': 'application/json',
+  //       'Authorization': 'Token $token',
+  //     },
+  //   );
+  //   if (response.statusCode == 200) {
+  //     return jsonDecode(response.body);
+  //   } else {
+  //     throw Exception('Failed to load admin estates: ${response.body}');
+  //   }
+  // }
+
+  /// - Allocation details
+  Future<Map<String, dynamic>> fetchEstateFullAllocationDetails(String estateId, String token) async {
+    final url = '$baseUrl/estate-full-allocation-details/$estateId/'; 
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Token $token',
+        },
+      );
+
+      switch (response.statusCode) {
+        case 200:
+          return json.decode(response.body);
+        case 404:
+          throw Exception('Estate not found');
+        case 401:
+          throw Exception('Authentication failed: Invalid or expired token');
+        case 403:
+          throw Exception('Permission denied: Check your access rights');
+        case 500:
+          throw Exception('Server error: Please try again later');
+        default:
+          throw Exception('Failed to load estate details: ${response.statusCode} - ${response.body}');
+      }
+    } on http.ClientException catch (e) {
+      throw Exception('Network error: ${e.message} (Check your connection)');
+    } on FormatException catch (e) {
+      throw Exception('Invalid response format: ${e.message}');
+    } catch (e) {
+      throw Exception('Unexpected error: $e');
+    }
+  }
+
+  // Future<void> updateAllocatedPlotForEstate(
+  //     String allocationId,
+  //     Map<String, dynamic> data,
+  //     String token,
+  // ) async {
+  //   final uri = Uri.parse('$baseUrl/update-allocated-plot-for-estate/$allocationId/');
+  //   final response = await http.patch(
+  //     uri,
+  //     headers: {
+  //       'Authorization': 'Token $token',
+  //       'Content-Type': 'application/json',
+  //     },
+  //     body: jsonEncode(data),
+  //   );
+  //   if (response.statusCode != 200) {
+  //     final body = jsonDecode(response.body);
+  //     throw Exception(body);
+  //   }
+  // }
+
+ Future<void> updateAllocatedPlotForEstate(
+    String allocationId,
+    Map<String, dynamic> data,
+    String token,
+  ) async {
+    final uri = Uri.parse('$baseUrl/update-allocated-plot-for-estate/$allocationId/');
+    
+    final resp = await http.patch(
+      uri,
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(data),
+    );
+
+    if (resp.statusCode != 200) {
+      final error = jsonDecode(resp.body);
+      throw Exception(error['detail'] ?? 'Failed to update allocation');
+    }
+  }
+
+  
+  /// Load estate plots with nested plot size units and plot numbers for dynamic UI updates.
+  Future<List<dynamic>> loadPlots(String token, int estateId) async {
+    final url = '$baseUrl/load-plots/?estate_id=$estateId';
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Token $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load plots: ${response.body}');
+    }
+  }
+
+  /// Delete an allocation by its ID.
+  Future<bool> deleteAllocation(String token, int allocationId) async {
+    final url = '$baseUrl/delete-allocation/';
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Token $token',
+      },
+      body: jsonEncode({'allocation_id': allocationId}),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['success'] == true;
+    } else {
+      throw Exception('Failed to delete allocation: ${response.body}');
+    }
+  }
+
+  /// Download allocation data as CSV.
+  /// The response will contain CSV data that you can handle accordingly.
+  Future<http.Response> downloadAllocations(String token, int estateId) async {
+    final url = '$baseUrl/download-allocations/?estate_id=$estateId';
+    return await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Token $token',
+      },
+    );
+  }
+
+  /// Download estate details as a PDF.
+  Future<http.Response> downloadEstatePDF(String token, int estateId) async {
+    final url = '$baseUrl/download-estate-pdf/$estateId/';
+    return await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Token $token',
+      },
+    );
+  }
+
+
+  Future<Map<String, dynamic>> getEstatePlot({
+    required String estateId,
+    required String token,
+  }) async {
+    final url = Uri.parse('$baseUrl/estates/$estateId/plot/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load estate plot. Status: ${response.statusCode}');
+    }
+  }
+
+  Future<void> updateEstatePlot({
+    required String estateId,
+    required String token,
+    required Map<String, dynamic> data,
+  }) async {
+    final url = Uri.parse('$baseUrl/estates/$estateId/plot/');
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode(data),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update estate plot: ${response.body}');
+    }
+  }
+
+  Future<void> updateAllocatedPlot(String id, Map<String, dynamic> data, String token) async {
+    final url = Uri.parse('$baseUrl/update-allocated-plot/');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Token $token',
+      },
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update allocation: ${response.body}');
+    }
+  }
+
+
+
+  final Dio _dio = Dio();
+  Future<void> uploadEstateLayout({
+    required String estateId,
+    required File layoutImage,
+    required String token,
+    
+  }) async {
+    try {
+      final formData = FormData.fromMap({
+        'estate': estateId,
+        'layout_image': await MultipartFile.fromFile(layoutImage.path),
+      });
+
+      final response = await _dio.post(
+        '$baseUrl/upload-estate-layout/',
+        data: formData,
+        options: Options(
+          headers: {'Authorization': 'Token $token'},
+        ),
+      );
+
+      if (response.statusCode != 201) {
+        throw Exception('Failed to upload layout: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Upload error: $e');
+    }
+  }
+
+  // get-plot-sizes
+  Future<List<PlotSize>> getPlotSizesForEstate({
+  required String estateId,
+  required String token,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '$baseUrl/get-plot-sizes/$estateId/',
+        options: Options(headers: {'Authorization': 'Token $token'}),
+      );
+      if (response.statusCode == 200) {
+        final data = response.data as List;
+        // Convert each dynamic json map into a PlotSize instance
+        return data.map((json) => PlotSize(
+            id: json['id'].toString(), 
+            size: json['size'])).toList();
+      } else {
+        throw Exception('Failed to load plot sizes');
+      }
+    } catch (e) {
+      throw Exception('Error fetching plot sizes: $e');
+    }
+  }
+
+  /// Upload prototype
+  Future<void> uploadEstatePrototype({
+    required String estateId,
+    required String plotSizeId,
+    required File prototypeImage,
+    required String title,
+    required String description,
+    required String token,
+  }) async {
+    try {
+      final formData = FormData.fromMap({
+        'estate': estateId,
+        'plot_size': plotSizeId,
+        'prototype_image': await MultipartFile.fromFile(prototypeImage.path),
+        'Title': title,
+        'Description': description,
+      });
+
+      final response = await _dio.post(
+        '$baseUrl/upload-prototype/',
+        data: formData,
+        options: Options(
+          headers: {'Authorization': 'Token $token'},
+          contentType: 'multipart/form-data',
+        ),
+      );
+
+      if (response.statusCode != 201) {
+        throw Exception('Failed to upload prototype: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Upload error: $e');
+    }
+  }
+
+/// Uploads a floor plan via the Django API.
+  Future<void> uploadFloorPlan({
+    required String estateId,
+    required String plotSizeId,
+    required File floorPlanImage,
+    required String planTitle,
+    String? description,
+    required String token,
+  }) async {
+    final formData = FormData.fromMap({
+      'estate': estateId,
+      'plot_size': plotSizeId,
+      'floor_plan_image': await MultipartFile.fromFile(floorPlanImage.path),
+      'plan_title': planTitle,
+      if (description != null && description.isNotEmpty) 'description': description,
+    });
+
+    final response = await _dio.post(
+      '$baseUrl/upload-floor-plan/',
+      data: formData,
+      options: Options(headers: {'Authorization': 'Token $token'}),
+    );
+
+    if (response.statusCode != 201) {
+      throw Exception('Failed to upload floor plan: ${response.statusCode}');
+    }
+  }
+
+
+
+
+  /// Update estate amenities via the Django API
+  Future<void> updateEstateAmenities({
+    required String estateId,
+    required List<String> amenities,
+    required String token,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/update-estate-amenities/'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'estate': estateId,
+        'amenities': amenities,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update amenities: ${response.statusCode}');
+    }
+  }
+  
+
+  /// Fetch available amenities from the API
+  Future<List<dynamic>> getAvailableAmenities(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/get-available-amenities/'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load amenities: ${response.statusCode}');
+    }
+  }
+  
+
+
+  /// Updates the work progress for the estate
+  Future<void> updateWorkProgress({
+    required String estateId,
+    required String progressStatus,
+    required String token,
+  }) async {
+    final response = await _dio.post(
+      '$baseUrl/update-work-progress/$estateId/',
+      data: {'progress_status': progressStatus},
+      options: Options(headers: {'Authorization': 'Token $token'}),
+    );
+    if (response.statusCode != 201) {
+      throw Exception('Failed to update progress: ${response.statusCode}');
+    }
+  }
+
+  /// Fetches the current estate map data using a GET request.
+  Future<Map<String, dynamic>?> getEstateMap({
+    required String estateId,
+    required String token,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '$baseUrl/update-estate-map/$estateId/',
+        options: Options(headers: {'Authorization': 'Token $token'}),
+      );
+      if (response.statusCode == 200) {
+        return response.data;
+      } else if (response.statusCode == 404) {
+        return null;
+      } else {
+        throw Exception('Failed to load map data: ${response.statusCode}');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+   /// Updates the estate map with new data using a POST request.
+  Future<void> updateEstateMap({
+    required String estateId,
+    required String latitude,
+    required String longitude,
+    String? googleMapLink,
+    required String token,
+  }) async {
+    final data = {
+      'latitude': latitude,
+      'longitude': longitude,
+      if (googleMapLink != null) 'google_map_link': googleMapLink,
+    };
+    try {
+      final response = await _dio.post(
+        '$baseUrl/update-estate-map/$estateId/',
+        data: data,
+        options: Options(headers: {'Authorization': 'Token $token'}),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to update map: ${response.statusCode}');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Estate Details
+  Future<Estate> getEstateDetails(String estateId, String token) async {
+    final url = Uri.parse('$baseUrl/estate-details/$estateId/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+      return Estate.fromJson(jsonData);
+    } else if (response.statusCode == 404) {
+      throw Exception('Estate not found');
+    } else {
+      throw Exception('Failed to load estate details: ${response.statusCode}');
+    }
+  }
+
+  ////// ADD ESTATE PLOTS
+
+ /// Fetch the list of all estates.
+  Future<List<Map<String, dynamic>>> fetchEstates({required String token}) async {
+    final url = Uri.parse('$baseUrl/estates/');
+    final response = await http.get(url, headers: {
+      'Authorization': 'Token $token',
+      'Content-Type': 'application/json',
+    });
+
+    if (response.statusCode == 200) {
+      final List data = json.decode(response.body);
+      return List<Map<String, dynamic>>.from(data);
+    } else {
+      throw Exception("Could not fetch estates. Please try again.");
+    }
+  }
+
+  // Update/Edit Estate
+  Future<void> updateEstate({
+    required String token,
+    required String estateId,
+    required Map<String, dynamic> data,
+  }) async {
+    final url = Uri.parse('$baseUrl/estates/$estateId/');
+    final response = await http.put(
+      url,
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode(data),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update estate. Status code: ${response.statusCode}');
+    }
+  }
+
+
+  /// Fetch details for Add Estate Plot for a given estate.
+   Future<EstatePlotDetails> fetchAddEstatePlotDetails({
+    required int estateId,
+    required String token,
+  }) async {
+    final url = Uri.parse('$baseUrl/get-add-estate-plot-details/$estateId/');
+    final response = await http.get(url, headers: {
+      'Authorization': 'Token $token',
+      'Content-Type': 'application/json',
+    });
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+      return EstatePlotDetails.fromJson(data);
+    } else {
+      throw Exception("Could not retrieve plot details. Please try again later.");
+    }
+  }
+
+  Future<dynamic> _handleResponse(http.Response response) async {
+    try {
+      final responseBody = json.decode(response.body);
+      
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return responseBody;
+      } else {
+        final errorData = responseBody is Map ? responseBody : {'message': response.body};
+        throw ApiException(
+          message: errorData['message']?.toString() ?? 'An error occurred',
+          details: errorData['details']?.toString() ?? 
+                errorData['error']?.toString() ?? 
+                'Please try again later',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      throw ApiException(
+        message: 'Failed to process response',
+        details: e.toString(),
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>> submitEstatePlot({
+    required String token,
+    required Map<String, dynamic> payload,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/add-estate-plot/');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Token $token',
+        },
+        body: json.encode(payload),
+      ).timeout(const Duration(seconds: 30));
+
+      return await _handleResponse(response);
+    } on http.ClientException catch (e) {
+      throw ApiException(
+        message: 'Network error',
+        details: e.message,
+        statusCode: 0,
+      );
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(
+        message: 'Unexpected error',
+        details: e.toString(),
+        statusCode: 0,
+      );
+    }
+  }
+  
+
+
+
+// PLOT ALLOCATION
+ Future<List<ClientForPlotAllocation>> fetchClientsForPlotAllocation(String token) async {
+    final url = Uri.parse('$baseUrl/clients/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body) as List;
+      return data.map((e) => ClientForPlotAllocation.fromJson(e as Map<String, dynamic>)).toList();
+    } else {
+      throw Exception('Failed to load clients (${response.statusCode})');
+    }
+  }
+
+  Future<List<EstateForPlotAllocation>> fetchEstatesForPlotAllocation(String token) async {
+    final url = Uri.parse('$baseUrl/estates/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body) as List;
+      return data.map((e) => EstateForPlotAllocation.fromJson(e as Map<String, dynamic>)).toList();
+    } else {
+      throw Exception('Failed to load estates (${response.statusCode})');
+    }
+  }
+
+  Future<PlotAllocationResponse> loadPlotsForPlotAllocation(int estateId, String token) async {
+    final url = Uri.parse('$baseUrl/load-plots-for-plot-allocation/?estate_id=$estateId');
+    
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Token $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        return PlotAllocationResponse.fromJson(responseData);
+      } else if (response.statusCode == 400) {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['detail'] ?? 'Bad request');
+      } else if (response.statusCode == 404) {
+        throw Exception('Estate not found');
+      } else {
+        throw Exception('Failed to load plots (${response.statusCode})');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+
+  Future<void> createAllocation({
+    required int clientId,
+    required int estateId,
+    required int plotSizeUnitId,
+    int? plotNumberId,
+    required String paymentType,
+    required String token,
+  }) async {
+    final uri = Uri.parse('$baseUrl/update-allocation/');
+
+    final body = {
+      'client_id': clientId,
+      'estate_id': estateId,
+      'plot_size_unit_id': plotSizeUnitId,
+      'payment_type': paymentType,
+      if (paymentType == 'full') 'plot_number_id': plotNumberId!,
+    };
+
+    final response = await http.post(
+      uri,
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode != 201) {
+      final data = jsonDecode(response.body);
+      final err = data['errors'] ?? data['message'] ?? 'Failed to allocate plot';
+      throw Exception(err.toString());
+    }
+  }
+
+  //? ADD ESTATE
+  Future<Map<String, dynamic>> addEstate({
+    required String token,
+    required String estateName,
+    required String location,
+    required String estateSize,
+    required String titleDeed,
+  }) async {
+    final url = Uri.parse('$baseUrl/add-estate/');
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        // These keys must match your Django EstateSerializer fields:
+        'name': estateName,
+        'location': location,
+        'estate_size': estateSize,
+        'title_deed': titleDeed,
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      return {'success': true, 'message': 'Estate added successfully.'};
+    } else {
+      try {
+        final data = jsonDecode(response.body);
+        // serializer errors come back under 'error'
+        final err = data['error'] ?? data;
+        return {'success': false, 'message': err.toString()};
+      } catch (_) {
+        return {'success': false, 'message': 'Unknown error occurred.'};
+      }
+    }
+  }
+
+
+  // ---------------- PLOT SIZE METHODS ----------------
+
+  Future<List<AddPlotSize>> fetchPlotSizes(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/plot-sizes/'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      List<dynamic> data = json.decode(response.body);
+      return data.map((e) => AddPlotSize.fromJson(e)).toList();
+    } else {
+      throw Exception('Failed to load plot sizes: ${response.statusCode}');
+    }
+  }
+
+  Future<AddPlotSize> createPlotSize(String size, String token) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/plot-sizes/'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({'size': size}),
+    );
+
+    if (response.statusCode == 201) {
+      return AddPlotSize.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to create plot size: ${response.statusCode}');
+    }
+  }
+
+  Future<void> deletePlotSize(int id, String token) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/plot-sizes/$id/'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode != 204) {
+      throw Exception('Failed to delete plot size: ${response.statusCode}');
+    }
+  }
+
+  Future<void> updatePlotSize(int id, String newSize, String token) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/plot-sizes/$id/'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({'size': newSize}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update plot size: ${response.statusCode}');
+    }
+  }
+
+  // ---------------- PLOT NUMBER METHODS ----------------
+
+  // Plot Numbers API Calls
+  Future<List<AddPlotNumber>> fetchPlotNumbers(String token, {int page = 1, int perPage = 50}) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/plot-numbers/?page=$page&per_page=$perPage'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      List<dynamic> data = json.decode(response.body);
+      return data.map((e) => AddPlotNumber.fromJson(e)).toList();
+    } else {
+      throw Exception('Failed to load plot numbers: ${response.statusCode}');
+    }
+  }
+
+  Future<AddPlotNumber> createPlotNumber(String number, String token) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/plot-numbers/'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({'number': number}),
+    );
+
+    if (response.statusCode == 201) {
+      return AddPlotNumber.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to create plot number: ${response.statusCode}');
+    }
+  }
+
+  Future<void> deletePlotNumber(int id, String token) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/plot-numbers/$id/'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode != 204) {
+      throw Exception('Failed to delete plot number: ${response.statusCode}');
+    }
+  }
+
+  Future<void> updatePlotNumber(int id, String newNumber, String token) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/plot-numbers/$id/'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({'number': newNumber}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update plot number: ${response.statusCode}');
+    }
+  }
+
+  // ADMIN CLIENT CHAT LIST
+  /// Fetch list of client chats for the admin
+  Future<List<Chat>> fetchClientChats(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/client-chats/'),
+        headers: {
+          'Authorization': 'Token $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        if (data.isEmpty) {
+          if (kDebugMode) {
+            print('No chats available');
+          }
+          return [];
+        }
+        return data.map((chatJson) => Chat.fromJson(chatJson)).toList();
+      } else {
+        final errorMsg = 'Failed to load client chats: ${response.statusCode} - ${response.body}';
+        if (kDebugMode) {
+          print(errorMsg);
+        }
+        throw Exception(errorMsg);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching chats: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Fetch the full thread for a given client
+  Future<List<Message>> fetchChatThread(String token, String clientId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/client-chats/$clientId/'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.map((msgJson) => Message.fromJson(msgJson)).toList();
+    } else {
+      throw Exception('Failed to load thread: ${response.statusCode}');
+    }
+  }
+
+  /// Send a new message from admin → client
+  Future<Message> sendAdminMessage({
+    required String token,
+    required String clientId,
+    required String content,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/client-chats/$clientId/'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({'content': content, 'message_type': 'enquiry'}),
+    );
+
+    if (response.statusCode == 201) {
+      return Message.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to send message: ${response.statusCode}');
+    }
+  }
+
+
+  
+
+}

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'client_sidebar.dart';
 
 class ClientRequestProperty extends StatefulWidget {
-  const ClientRequestProperty({super.key});
+  const ClientRequestProperty({super.key, required String token});
 
   @override
   _ClientRequestPropertyState createState() => _ClientRequestPropertyState();
@@ -203,14 +203,14 @@ class _ClientRequestPropertyState extends State<ClientRequestProperty>
           ),
 
           // Sidebar Animation
-          AnimatedPositioned(
-            duration: Duration(milliseconds: 300),
-            left: isSidebarOpen ? 0 : -250,
-            top: 0,
-            bottom: 0,
-            width: 250,
-            child: ClientSidebar(closeSidebar: toggleSidebar),
-          ),
+          // AnimatedPositioned(
+          //   duration: Duration(milliseconds: 300),
+          //   left: isSidebarOpen ? 0 : -250,
+          //   top: 0,
+          //   bottom: 0,
+          //   width: 250,
+          //   child: ClientSidebar(closeSidebar: toggleSidebar),
+          // ),
         ],
       ),
     );

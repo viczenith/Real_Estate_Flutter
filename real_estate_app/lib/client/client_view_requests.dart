@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'client_sidebar.dart';
+// import 'client_sidebar.dart';
 
 // ignore: use_key_in_widget_constructors
 class ClientViewRequests extends StatefulWidget {
+  const ClientViewRequests({super.key, required String token});
+
+
   @override
-  // ignore: library_private_types_in_public_api
   _ClientViewRequestsState createState() => _ClientViewRequestsState();
 }
 
@@ -95,14 +97,14 @@ class _ClientViewRequestsState extends State<ClientViewRequests>
           ),
 
           // Sidebar Animation
-          AnimatedPositioned(
-            duration: Duration(milliseconds: 300),
-            left: isSidebarOpen ? 0 : -250,
-            top: 0,
-            bottom: 0,
-            width: 250,
-            child: ClientSidebar(closeSidebar: toggleSidebar),
-          ),
+          // AnimatedPositioned(
+          //   duration: Duration(milliseconds: 300),
+          //   left: isSidebarOpen ? 0 : -250,
+          //   top: 0,
+          //   bottom: 0,
+          //   width: 250,
+          //   child: ClientSidebar(closeSidebar: toggleSidebar),
+          // ),
         ],
       ),
     );

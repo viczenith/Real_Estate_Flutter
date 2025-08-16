@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'client_sidebar.dart';
 
 class PropertyDetailsPage extends StatefulWidget {
-  const PropertyDetailsPage({super.key});
+  const PropertyDetailsPage({super.key, required String token});
 
   @override
   _PropertyDetailsPageState createState() => _PropertyDetailsPageState();
@@ -89,15 +89,15 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage>
             ),
           ),
 
-          // ✅ Sidebar Animation
-          AnimatedPositioned(
-            duration: Duration(milliseconds: 300),
-            left: isSidebarOpen ? 0 : -250,
-            top: 0,
-            bottom: 0,
-            width: 250,
-            child: ClientSidebar(closeSidebar: toggleSidebar),
-          ),
+
+          // AnimatedPositioned(
+          //   duration: Duration(milliseconds: 300),
+          //   left: isSidebarOpen ? 0 : -250,
+          //   top: 0,
+          //   bottom: 0,
+          //   width: 250,
+          //   child: ClientSidebar(closeSidebar: toggleSidebar),
+          // ),
         ],
       ),
     );

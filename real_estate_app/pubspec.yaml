@@ -50,6 +50,13 @@ dependencies:
   
   json_annotation: ^4.8.1
   auto_size_text: ^3.0.0
+  flutter_secure_storage: ^9.2.4
+  google_fonts: ^6.3.0
+  shimmer: ^3.0.0
+  mime: ^1.0.6
+  http_parser: ^4.1.2
+  confetti: ^0.8.0
+  flutter_animate: ^4.5.2
   
 
 

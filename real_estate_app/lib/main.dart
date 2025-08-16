@@ -62,7 +62,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Real Estate Management System',
-      
+
       // Default Light Theme (Muted Theme Mode)
       theme: ThemeData(
         fontFamily: '.SF Pro Text',
@@ -71,28 +71,49 @@ class MyApp extends StatelessWidget {
 
       initialRoute: '/',
       routes: {
-        '/': (context) => const OnboardingScreen(),
+        '/': (context) => const DynamicLandingPage(),
+        // '/': (context) => const OnboardingScreen(),
         '/login': (context) => const LoginScreen(),
         '/choose-role': (context) => const ChooseRoleScreen(),
-        
+
         // Client side routes
         '/client-dashboard': (context) {
           final token = ModalRoute.of(context)?.settings.arguments as String?;
           return ClientDashboard(token: token ?? '');
         },
-        '/client-profile': (context) => const ClientProfile(),
-        '/client-property-list': (context) => const ClientPropertyList(),
-        '/client-request-property': (context) => const ClientRequestProperty(),
-        '/client-view-requests': (context) => ClientViewRequests(),
-        '/client-chat-admin': (context) => const ClientChatAdmin(),
-        '/client-property-details': (context) => const PropertyDetailsPage(),
+        '/client-profile': (context) {
+          final token = ModalRoute.of(context)?.settings.arguments as String?;
+          return ClientProfile(token: token ?? '');
+        },
+
+        '/client-property-list': (context) {
+          final token = ModalRoute.of(context)?.settings.arguments as String?;
+          return ClientPropertyList(token: token ?? '');
+        },
+        '/client-request-property': (context) {
+          final token = ModalRoute.of(context)?.settings.arguments as String?;
+          return ClientRequestProperty(token: token ?? '');
+        },
+        '/client-view-requests': (context) {
+          final token = ModalRoute.of(context)?.settings.arguments as String?;
+          return ClientViewRequests(token: token ?? '');
+        },
+
+        '/client-chat-admin': (context) {
+          final token = ModalRoute.of(context)?.settings.arguments as String?;
+          return ClientChatAdmin(token: token ?? '');
+        },
+        '/client-property-details': (context) {
+          final token = ModalRoute.of(context)?.settings.arguments as String?;
+          return PropertyDetailsPage(token: token ?? '');
+        },
 
         // Admin side routes
         '/admin-dashboard': (context) {
           final token = ModalRoute.of(context)?.settings.arguments as String?;
-          return token != null && token.isNotEmpty 
-            ? AdminDashboard(token: token) 
-            : const ErrorScreen();
+          return token != null && token.isNotEmpty
+              ? AdminDashboard(token: token)
+              : const ErrorScreen();
         },
         '/admin-clients': (context) {
           final token = ModalRoute.of(context)?.settings.arguments as String?;
@@ -120,9 +141,9 @@ class MyApp extends StatelessWidget {
         },
         '/view-estate': (context) {
           final token = ModalRoute.of(context)?.settings.arguments as String?;
-          return token != null && token.isNotEmpty 
-            ? ViewEstate(token: token)
-            : const ErrorScreen();
+          return token != null && token.isNotEmpty
+              ? ViewEstate(token: token)
+              : const ErrorScreen();
         },
         '/add-estate-plots': (context) {
           final token = ModalRoute.of(context)?.settings.arguments as String?;
@@ -145,7 +166,8 @@ class MyApp extends StatelessWidget {
           return AdminSettings(token: token ?? '');
         },
         '/estate-allocation-details': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments as Map<String, String>?;
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, String>?;
           return EstateAllocationDetails(
             token: args?['token'] ?? '',
             estateId: args?['estateId'] ?? '',

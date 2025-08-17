@@ -1218,7 +1218,7 @@ class ApiService {
     }
   }
 
-  /// Fetch the full thread for a given client
+
   Future<List<Message>> fetchChatThread(String token, String clientId) async {
     final response = await http.get(
       Uri.parse('$baseUrl/client-chats/$clientId/'),
@@ -1236,7 +1236,7 @@ class ApiService {
     }
   }
 
-  /// Send a new message from admin → client
+
   Future<Message> sendAdminMessage({
     required String token,
     required String clientId,
@@ -1276,12 +1276,54 @@ class ApiService {
     if (resp.statusCode == 200) {
       final Map<String, dynamic> data = jsonDecode(resp.body) as Map<String, dynamic>;
 
-      // Normalize profile_image to full URL if backend returns a relative path
+      // --- normalize top-level profile_image to absolute URL ---
       final img = data['profile_image'];
       if (img != null && img is String && img.isNotEmpty && !img.startsWith('http')) {
-        // ensure no double slashes
         final prefix = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
         data['profile_image'] = '$prefix$img';
+      }
+
+      // --- normalize assigned_marketer into Map<String, dynamic>? with safe keys ---
+      final amRaw = data['assigned_marketer'];
+      if (amRaw == null) {
+        data['assigned_marketer'] = null;
+      } else {
+        Map<String, dynamic> am;
+        if (amRaw is Map<String, dynamic>) {
+          am = Map<String, dynamic>.from(amRaw);
+        } else if (amRaw is Map) {
+          am = Map<String, dynamic>.from(amRaw.map((k, v) => MapEntry(k.toString(), v)));
+        } else {
+          // unexpected shape -> null
+          data['assigned_marketer'] = null;
+          return data;
+        }
+
+        // normalize name keys
+        am['full_name'] = (am['full_name']?.toString().isNotEmpty == true)
+            ? am['full_name'].toString()
+            : (am['name']?.toString() ?? '');
+
+        String? marketerImage;
+        if (am['profile_image'] is String && (am['profile_image'] as String).isNotEmpty) {
+          marketerImage = am['profile_image'] as String;
+        } else if (am['avatar'] is String && (am['avatar'] as String).isNotEmpty) {
+          marketerImage = am['avatar'] as String;
+        } else if (am['image'] is String && (am['image'] as String).isNotEmpty) {
+          marketerImage = am['image'] as String;
+        }
+
+        if (marketerImage != null && !marketerImage.startsWith('http')) {
+          final prefix = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+          marketerImage = '$prefix$marketerImage';
+        }
+        am['profile_image'] = marketerImage;
+
+        // ensure phone/email are string or null
+        am['phone'] = am['phone']?.toString();
+        am['email'] = am['email']?.toString();
+
+        data['assigned_marketer'] = am;
       }
 
       return data;
@@ -1353,6 +1395,31 @@ class ApiService {
     throw Exception('$msg ${resp.body}');
   }
 
+  Future<dynamic> getValueAppreciation({
+    required String token,
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    final uri = Uri.parse('$baseUrl/clients/appreciation/');
+
+    final resp = await http.get(uri, headers: {
+      'Authorization': 'Token $token',
+      'Accept': 'application/json',
+    }).timeout(timeout);
+
+    if (resp.statusCode == 200) {
+      final decoded = jsonDecode(resp.body);
+      // Accept List or Map (or null/empty)
+      return decoded;
+    }
+
+    String msg = 'Failed to load appreciation: ${resp.statusCode}';
+    try {
+      final j = jsonDecode(resp.body);
+      if (j is Map && j['detail'] != null) msg = j['detail'].toString();
+    } catch (_) {}
+    throw Exception('$msg ${resp.body}');
+  }
+
   Future<List<dynamic>> getClientProperties({
     required String token,
     Duration timeout = const Duration(seconds: 15),
@@ -1365,7 +1432,14 @@ class ApiService {
     }).timeout(timeout);
 
     if (resp.statusCode == 200) {
-      return jsonDecode(resp.body) as List<dynamic>;
+      final decoded = jsonDecode(resp.body);
+      if (decoded is List) return decoded;
+      if (decoded is Map) {
+        final alt = decoded['transactions'] ?? decoded['results'] ?? decoded['data'] ?? decoded['items'];
+        if (alt is List) return alt;
+      }
+      // fallback: wrap single object in a list
+      return decoded is Map ? [decoded] : <dynamic>[];
     }
 
     String msg = 'Failed to load properties: ${resp.statusCode}';
@@ -1376,11 +1450,11 @@ class ApiService {
     throw Exception('$msg ${resp.body}');
   }
 
-  Future<List<dynamic>> getValueAppreciation({
+  Future<List<dynamic>> getClientTransactions({
     required String token,
     Duration timeout = const Duration(seconds: 15),
   }) async {
-    final uri = Uri.parse('$baseUrl/clients/appreciation/');
+    final uri = Uri.parse('$baseUrl/clients/transactions/');
 
     final resp = await http.get(uri, headers: {
       'Authorization': 'Token $token',
@@ -1388,10 +1462,16 @@ class ApiService {
     }).timeout(timeout);
 
     if (resp.statusCode == 200) {
-      return jsonDecode(resp.body) as List<dynamic>;
+      final decoded = jsonDecode(resp.body);
+      if (decoded is List) return decoded;
+      if (decoded is Map) {
+        final alt = decoded['transactions'] ?? decoded['results'] ?? decoded['data'] ?? decoded['items'];
+        if (alt is List) return alt;
+      }
+      return decoded is Map ? [decoded] : <dynamic>[];
     }
 
-    String msg = 'Failed to load appreciation: ${resp.statusCode}';
+    String msg = 'Failed to load transactions: ${resp.statusCode}';
     try {
       final j = jsonDecode(resp.body);
       if (j is Map && j['detail'] != null) msg = j['detail'].toString();
@@ -1428,29 +1508,6 @@ class ApiService {
       if (j is Map && j['detail'] != null) message = j['detail'].toString();
     } catch (_) {}
     throw Exception('$message ${resp.body}');
-  }
-
-  Future<List<dynamic>> getClientTransactions({
-    required String token,
-    Duration timeout = const Duration(seconds: 15),
-  }) async {
-    final uri = Uri.parse('$baseUrl/clients/transactions/');
-
-    final resp = await http.get(uri, headers: {
-      'Authorization': 'Token $token',
-      'Accept': 'application/json',
-    }).timeout(timeout);
-
-    if (resp.statusCode == 200) {
-      return jsonDecode(resp.body) as List<dynamic>;
-    }
-
-    String msg = 'Failed to load transactions: ${resp.statusCode}';
-    try {
-      final j = jsonDecode(resp.body);
-      if (j is Map && j['detail'] != null) msg = j['detail'].toString();
-    } catch (_) {}
-    throw Exception('$msg ${resp.body}');
   }
 
   Future<Map<String, dynamic>> getTransactionDetail({

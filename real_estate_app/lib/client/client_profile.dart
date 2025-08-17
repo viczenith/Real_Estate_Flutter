@@ -26,6 +26,10 @@ class _ClientProfileState extends State<ClientProfile>
   late final AnimationController _glowController;
   final Map<int, NumberFormat> _currencyFormatCache = {};
   // bool _aboutExpanded = false;
+  bool _currentVisible = false;
+  bool _newVisible = false;
+  bool _confirmVisible = false;
+
 
   double _toDouble(dynamic v) {
     if (v == null) return 0.0;
@@ -87,7 +91,9 @@ class _ClientProfileState extends State<ClientProfile>
 
   late Future<Map<String, dynamic>> _profileFuture;
   late Future<List<dynamic>> _propertiesFuture;
-  late Future<List<dynamic>> _appreciationFuture;
+  // late Future<List<dynamic>> _appreciationFuture;
+  late Future<dynamic> _appreciationFuture;
+
 
   final ImagePicker _picker = ImagePicker();
   File? _imageFile;
@@ -113,6 +119,7 @@ class _ClientProfileState extends State<ClientProfile>
     super.initState();
     // Tab controller
     _tabController = TabController(length: 5, vsync: this);
+    _appreciationFuture = ApiService().getValueAppreciation(token: widget.token);
 
     // Glow controller
     _glowController = AnimationController(
@@ -149,6 +156,18 @@ class _ClientProfileState extends State<ClientProfile>
   void dispose() {
     _glowController.dispose();
     _tabController.dispose();
+
+    _fullNameController.dispose();
+    _aboutController.dispose();
+    _companyController.dispose();
+    _jobController.dispose();
+    _countryController.dispose();
+    _addressController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -245,63 +264,60 @@ class _ClientProfileState extends State<ClientProfile>
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return AppLayout(
-        pageTitle: 'Client Profile',
-        token: widget.token,
-        side: AppSide.client,
-        child: AnnotatedRegion<SystemUiOverlayStyle>(
-          value: SystemUiOverlayStyle.light.copyWith(
-            statusBarColor: Colors.transparent,
-            statusBarIconBrightness: Brightness.light,
-            statusBarBrightness: Brightness.light,
+      pageTitle: 'Client Profile',
+      token: widget.token,
+      side: AppSide.client,
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light.copyWith(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.light,
+        ),
+        child: Scaffold(
+          extendBodyBehindAppBar: true,
+          backgroundColor: Colors.transparent,
+          bottomNavigationBar: ClientBottomNav(
+            currentIndex: 1,
+            token: widget.token,
+            chatBadge: 1,
           ),
-          child: Scaffold(
-            extendBodyBehindAppBar: true,
-            // backgroundColor: const Color(0xFFF8F9FA),
-            backgroundColor: Colors.transparent,
-            bottomNavigationBar: ClientBottomNav(
-              currentIndex: 1,
-              token: widget.token,
-              chatBadge: 1,
-            ),
-            body: NestedScrollView(
-              floatHeaderSlivers: true,
-              headerSliverBuilder: (context, innerBoxIsScrolled) {
-                final double topPadding = MediaQuery.of(context).padding.top;
-                final double expandedHeight = 280.0 + topPadding;
+          body: NestedScrollView(
+            floatHeaderSlivers: true,
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              final double topPadding = MediaQuery.of(context).padding.top;
+              final double expandedHeight = 280.0 + topPadding;
 
-                return [
-                  SliverAppBar(
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    pinned: true,
-                    stretch: true,
-                    expandedHeight: expandedHeight,
-                    automaticallyImplyLeading: false,
-                    centerTitle: false,
-                    systemOverlayStyle: SystemUiOverlayStyle.light.copyWith(
-                      statusBarColor: Colors.transparent,
-                    ),
-                    toolbarHeight: kToolbarHeight + topPadding,
-                    collapsedHeight: kToolbarHeight + topPadding,
-                    flexibleSpace:
-                        LayoutBuilder(builder: (context, constraints) {
+              return [
+                SliverAppBar(
+                  backgroundColor: Colors.transparent,
+                  surfaceTintColor: Colors.transparent, // ✅ prevent white tint
+                  shadowColor: Colors.transparent, // ✅ no shadow glow
+                  elevation: 0,
+                  pinned: true,
+                  stretch: true,
+                  expandedHeight: expandedHeight,
+                  automaticallyImplyLeading: false,
+                  centerTitle: false,
+                  systemOverlayStyle: SystemUiOverlayStyle.light.copyWith(
+                    statusBarColor: Colors.transparent,
+                  ),
+                  toolbarHeight: kToolbarHeight + topPadding,
+                  collapsedHeight: kToolbarHeight + topPadding,
+                  flexibleSpace: LayoutBuilder(
+                    builder: (context, constraints) {
                       final double maxHeight = constraints.maxHeight;
-                      final double t =
-                          ((maxHeight - (kToolbarHeight + topPadding)) /
-                                  ((expandedHeight) -
-                                      (kToolbarHeight + topPadding)))
-                              .clamp(0.0, 1.0);
+                      final double t = ((maxHeight - (kToolbarHeight + topPadding)) /
+                              (expandedHeight - (kToolbarHeight + topPadding)))
+                          .clamp(0.0, 1.0);
 
                       const double avatarMax = 110.0;
                       const double avatarMin = 40.0;
                       final double avatarSize =
                           avatarMin + (avatarMax - avatarMin) * t;
 
-                      // compute left positions: when expanded avatar centered, when collapsed near left padding
                       final double screenWidth =
                           MediaQuery.of(context).size.width;
                       final double avatarCenterLeftExpanded =
@@ -310,7 +326,6 @@ class _ClientProfileState extends State<ClientProfile>
                       final double avatarLeft = avatarLeftCollapsed +
                           (avatarCenterLeftExpanded - avatarLeftCollapsed) * t;
 
-                      // compute top positions: expanded avatar near bottom of header, collapsed inside toolbar
                       final double avatarTopExpanded =
                           expandedHeight - avatarSize / 2 - 16;
                       final double avatarTopCollapsed =
@@ -324,15 +339,16 @@ class _ClientProfileState extends State<ClientProfile>
                       final double smallTitleLeftCollapsed =
                           avatarLeftCollapsed + avatarMin + 12.0;
                       final double smallTitleLeftExpanded = 20.0;
-                      final double smallTitleLeft = smallTitleLeftCollapsed +
-                          (smallTitleLeftExpanded - smallTitleLeftCollapsed) *
-                              t;
+                      final double smallTitleLeft =
+                          smallTitleLeftCollapsed +
+                              (smallTitleLeftExpanded - smallTitleLeftCollapsed) *
+                                  t;
 
-                      // background image widget (use network header if available, else asset)
                       final Widget backgroundImageWidget =
                           (_headerImageUrl != null &&
                                   _headerImageUrl!.isNotEmpty)
-                              ? Image.network(_headerImageUrl!,
+                              ? Image.network(
+                                  _headerImageUrl!,
                                   fit: BoxFit.cover,
                                   width: double.infinity,
                                   height: double.infinity,
@@ -341,10 +357,14 @@ class _ClientProfileState extends State<ClientProfile>
                                     return Container(color: Colors.grey[300]);
                                   },
                                   errorBuilder: (c, e, s) => Image.asset(
-                                      'assets/avater.webp',
-                                      fit: BoxFit.cover))
-                              : Image.asset('assets/avater.webp',
-                                  fit: BoxFit.cover);
+                                    'assets/avater.webp',
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : Image.asset(
+                                  'assets/avater.webp',
+                                  fit: BoxFit.cover,
+                                );
 
                       final double glowScale =
                           0.85 + (_glowController.value) * (1.35 - 0.85);
@@ -353,15 +373,10 @@ class _ClientProfileState extends State<ClientProfile>
                       return Stack(
                         fit: StackFit.expand,
                         children: [
-                          // Make sure background paints under the status bar (no white gap)
-                          Positioned.fill(
-                            child: Transform.translate(
-                              offset: Offset(0, (1 - t) * 28),
-                              child: backgroundImageWidget,
-                            ),
-                          ),
+                          // ✅ Background image fills without shifting (no white gap)
+                          Positioned.fill(child: backgroundImageWidget),
 
-                          // gradient overlay (keeps contrast) — remains semi-transparent at all times
+                          // ✅ Gradient overlay (keeps readability)
                           Positioned.fill(
                             child: Container(
                               decoration: BoxDecoration(
@@ -383,27 +398,24 @@ class _ClientProfileState extends State<ClientProfile>
                             bottom: 20,
                             child: Opacity(
                               opacity: bigTitleOpacity,
-                              child: Transform.translate(
-                                offset: Offset(0, (1 - t) * 6),
-                                child: Text(
-                                  'Profile',
-                                  style: GoogleFonts.sora(
-                                    color: Colors.white,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w700,
-                                    shadows: [
-                                      Shadow(
-                                          blurRadius: 6.0,
-                                          color:
-                                              Colors.black.withOpacity(0.45)),
-                                    ],
-                                  ),
+                              child: Text(
+                                'Profile',
+                                style: GoogleFonts.sora(
+                                  color: Colors.white,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w700,
+                                  shadows: [
+                                    Shadow(
+                                      blurRadius: 6.0,
+                                      color: Colors.black.withOpacity(0.45),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
 
-                          // Small collapsed title (next to avatar when collapsed)
+                          // Small collapsed title
                           Positioned(
                             left: smallTitleLeft,
                             top: MediaQuery.of(context).padding.top + 12,
@@ -444,8 +456,9 @@ class _ClientProfileState extends State<ClientProfile>
                                   ),
                                 ],
                                 border: Border.all(
-                                    color: Colors.white.withOpacity(0.95),
-                                    width: 3.0),
+                                  color: Colors.white.withOpacity(0.95),
+                                  width: 3.0,
+                                ),
                               ),
                               child: ClipOval(
                                 child: Material(
@@ -456,24 +469,26 @@ class _ClientProfileState extends State<ClientProfile>
                                       tag: 'profile-image',
                                       child: (_headerImageUrl != null &&
                                               _headerImageUrl!.isNotEmpty)
-                                          ? Image.network(_headerImageUrl!,
+                                          ? Image.network(
+                                              _headerImageUrl!,
                                               fit: BoxFit.cover,
                                               width: avatarSize,
                                               height: avatarSize,
-                                              loadingBuilder:
-                                                  (c, child, progress) {
-                                                if (progress == null)
-                                                  return child;
+                                              loadingBuilder: (c, child, progress) {
+                                                if (progress == null) return child;
                                                 return Container(
                                                     color: Colors.grey[300]);
                                               },
                                               errorBuilder: (c, e, s) =>
                                                   Image.asset(
-                                                      'assets/avater.webp',
-                                                      fit: BoxFit.cover))
+                                                'assets/avater.webp',
+                                                fit: BoxFit.cover,
+                                              ),
+                                            )
                                           : Image.asset(
                                               'assets/avater.webp',
-                                              fit: BoxFit.cover),
+                                              fit: BoxFit.cover,
+                                            ),
                                     ),
                                   ),
                                 ),
@@ -482,45 +497,51 @@ class _ClientProfileState extends State<ClientProfile>
                           ),
                         ],
                       );
-                    }),
+                    },
                   ),
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _SliverAppBarDelegate(
-                      TabBar(
-                        controller: _tabController,
-                        isScrollable: true,
-                        indicatorColor: const Color(0xFF4154F1),
-                        indicatorWeight: 3.0,
-                        labelStyle: GoogleFonts.sora(
-                            fontWeight: FontWeight.w600, fontSize: 14.0),
-                        unselectedLabelStyle: GoogleFonts.sora(
-                            fontWeight: FontWeight.w500, fontSize: 14.0),
-                        tabs: const [
-                          Tab(text: 'Overview'),
-                          Tab(text: 'Properties'),
-                          Tab(text: 'Value Appreciation'),
-                          Tab(text: 'Edit Profile'),
-                          Tab(text: 'Password'),
-                        ],
+                ),
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _SliverAppBarDelegate(
+                    TabBar(
+                      controller: _tabController,
+                      isScrollable: true,
+                      indicatorColor: const Color(0xFF4154F1),
+                      indicatorWeight: 3.0,
+                      labelStyle: GoogleFonts.sora(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.0,
                       ),
+                      unselectedLabelStyle: GoogleFonts.sora(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14.0,
+                      ),
+                      tabs: const [
+                        Tab(text: 'Overview'),
+                        Tab(text: 'Properties'),
+                        Tab(text: 'Value Appreciation'),
+                        Tab(text: 'Edit Profile'),
+                        Tab(text: 'Password'),
+                      ],
                     ),
                   ),
-                ];
-              },
-              body: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildOverviewTab(),
-                  _buildPropertiesTab(),
-                  _buildAppreciationTab(),
-                  _buildEditProfileTab(),
-                  _buildPasswordTab(),
-                ],
-              ),
+                ),
+              ];
+            },
+            body: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildOverviewTab(),
+                _buildPropertiesTab(),
+                _buildAppreciationTab(),
+                _buildEditProfileTab(),
+                _buildPasswordTab(),
+              ],
             ),
           ),
-        ));
+        ),
+      ),
+    );
   }
 
   Widget _buildOverviewTab() {
@@ -581,7 +602,7 @@ class _ClientProfileState extends State<ClientProfile>
     }
   }
 
-  // ---------- Properties Tab (replacement) ----------
+
   Widget _buildPropertiesTab() {
     return FutureBuilder<List<dynamic>>(
       future: _propertiesFuture,
@@ -656,7 +677,7 @@ class _ClientProfileState extends State<ClientProfile>
     );
   }
 
-  // ---------- Property Card (replacement) ----------
+
   Widget _buildPropertyCard(Map<String, dynamic> property, int index) {
     final String estateName =
         (property['estate_name'] ?? 'Unknown Estate').toString();
@@ -857,7 +878,7 @@ class _ClientProfileState extends State<ClientProfile>
     );
   }
 
-  // ---------- Helpers: Chip style info item ----------
+
   Widget _buildPropertyInfoItemWithChip(IconData icon, String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -877,7 +898,7 @@ class _ClientProfileState extends State<ClientProfile>
     );
   }
 
-  // ---------- Modal details (transitional) ----------
+
   void _openPropertyDetailsModal(Map<String, dynamic> property, int index) {
     showModalBottomSheet(
       context: context,
@@ -1039,7 +1060,7 @@ class _ClientProfileState extends State<ClientProfile>
     );
   }
 
-  // ---------- Small helpers used in modal ----------
+
   Widget _buildInfoChip(String title, String value) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1062,283 +1083,573 @@ class _ClientProfileState extends State<ClientProfile>
   }
 
   Widget _buildAppreciationTab() {
-    return FutureBuilder<List<dynamic>>(
+    return FutureBuilder<dynamic>(
       future: _appreciationFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildShimmerLoader();
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-        final appreciationData = snapshot.data!;
+        if (snapshot.connectionState == ConnectionState.waiting) return _buildShimmerLoader();
+        if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
 
-        if (appreciationData.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.trending_up, size: 80, color: Colors.grey[300]),
-                const SizedBox(height: 16),
-                Text(
-                  'No Appreciation Data',
-                  style: GoogleFonts.sora(fontSize: 18),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Property appreciation data will appear here',
-                  style: GoogleFonts.sora(color: Colors.grey),
-                ),
-              ],
-            ),
-          );
+        final data = snapshot.data;
+        if (data == null) {
+          return _emptyAppreciationPlaceholder();
         }
 
-        double totalAppreciation = 0;
-        double totalGrowth = 0;
-        double highestGrowth = 0;
+        // Normalization (keeps your original flexible parsing)
+        List<dynamic> transactionsList = <dynamic>[];
+        List<dynamic> seriesList = <dynamic>[];
+
+        if (data is List) {
+          transactionsList = data;
+        } else if (data is Map) {
+          final txs = data['transactions'] ?? data['transactions_list'] ?? data['results'] ?? data['data'] ?? data['items'];
+          final s = data['series'] ?? data['points'];
+          if (txs is List) transactionsList = txs;
+          if (transactionsList.isEmpty) {
+            for (final v in data.values) {
+              if (v is List) {
+                transactionsList = v;
+                break;
+              }
+            }
+          }
+          if (s is List) seriesList = s;
+        } else {
+          return Center(child: Text('Unexpected data format from server'));
+        }
+
+        if (transactionsList.isEmpty) {
+          return _emptyAppreciationPlaceholder();
+        }
+
+        // build normalized list and summary metrics
+        final normalized = <Map<String, dynamic>>[];
+        double totalAppreciation = 0.0;
+        double totalGrowth = 0.0;
+        double highestGrowth = double.negativeInfinity;
         String highestGrowthProperty = '';
 
-        for (var item in appreciationData) {
-          totalAppreciation += item['appreciation_total'] ?? 0;
-          totalGrowth += item['growth_rate'] ?? 0;
-          if ((item['growth_rate'] ?? 0) > highestGrowth) {
-            highestGrowth = item['growth_rate'] ?? 0;
-            highestGrowthProperty = item['estate_name'] ?? '';
+        for (var raw in transactionsList) {
+          final Map<String, dynamic> item =
+              raw is Map<String, dynamic> ? raw : Map<String, dynamic>.from(raw as Map);
+          final estateName = item['estate_name']?.toString() ??
+              (item['estate'] is Map ? item['estate']['name']?.toString() : null) ??
+              (item['allocation'] is Map
+                  ? (item['allocation']['estate'] is Map
+                      ? item['allocation']['estate']['name']?.toString()
+                      : null)
+                  : null) ??
+              'Unknown Estate';
+          final plotSize = item['plot_size']?.toString() ??
+              (item['allocation'] is Map ? item['allocation']['plot_size']?.toString() : null) ??
+              (item['allocation'] is Map && item['allocation']['plot_size'] is Map
+                  ? item['allocation']['plot_size']['size']?.toString()
+                  : null) ??
+              'N/A';
+          final purchasePrice =
+              _toDouble(item['purchase_price'] ?? item['total_amount'] ?? item['total'] ?? 0);
+          final currentValue =
+              _toDouble(item['current_value'] ?? item['current'] ?? item['latest_price'] ?? purchasePrice);
+          final appreciationTotal =
+              _toDouble(item['appreciation'] ?? item['appreciation_total'] ?? (currentValue - purchasePrice));
+          double growthRate;
+          if (item['growth_rate'] != null) {
+            growthRate = _toDouble(item['growth_rate']);
+          } else if (purchasePrice > 0) {
+            growthRate = ((currentValue - purchasePrice) / purchasePrice) * 100.0;
+          } else {
+            growthRate = 0.0;
+          }
+          double absGrowthRate = growthRate.abs();
+          if (!absGrowthRate.isFinite) absGrowthRate = 0.0;
+          if (absGrowthRate > 100.0) absGrowthRate = 100.0;
+
+          DateTime? transactionDate;
+          if (item['transaction_date'] != null) {
+            try {
+              transactionDate = DateTime.parse(item['transaction_date'].toString());
+            } catch (_) {
+              transactionDate = null;
+            }
+          }
+
+          final norm = <String, dynamic>{
+            'raw': item,
+            'estate_name': estateName,
+            'plot_size': plotSize,
+            'purchase_price': purchasePrice,
+            'current_value': currentValue,
+            'appreciation_total': appreciationTotal,
+            'growth_rate': growthRate,
+            'abs_growth_rate': absGrowthRate,
+            'transaction_date': transactionDate,
+            'transaction_id': item['id'] ?? item['transaction_id'] ?? item['pk'],
+            'receipt_number': item['receipt_number'] ?? item['receipt'] ?? item['raw_receipt'],
+          };
+
+          normalized.add(norm);
+
+          totalAppreciation += appreciationTotal;
+          totalGrowth += growthRate;
+          if (growthRate > highestGrowth) {
+            highestGrowth = growthRate;
+            highestGrowthProperty = estateName;
           }
         }
 
-        final averageGrowth = appreciationData.isNotEmpty
-            ? totalGrowth / appreciationData.length
-            : 0;
+        final averageGrowth = normalized.isNotEmpty ? totalGrowth / normalized.length : 0.0;
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Property Value Appreciation',
-                style: GoogleFonts.sora(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+        // Responsive layout
+        return LayoutBuilder(builder: (context, constraints) {
+          final maxWidth = constraints.maxWidth;
+          int columns = 1;
+          if (maxWidth >= 1200) columns = 3;
+          else if (maxWidth >= 900) columns = 2;
+          else columns = 1;
+
+          const horizontalPadding = 16.0;
+          const gap = 16.0;
+          final availableWidth = maxWidth - (horizontalPadding * 2) - (gap * (columns - 1));
+          final cardWidth = (availableWidth / columns).clamp(260.0, 560.0);
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Property Value Appreciation',
+                    style: GoogleFonts.sora(fontSize: 22, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 6),
+                Text('Detailed view of property value growth over time',
+                    style: GoogleFonts.sora(fontSize: 14, color: Colors.grey)),
+                const SizedBox(height: 18),
+                Wrap(
+                  spacing: gap,
+                  runSpacing: gap,
+                  children: List.generate(normalized.length, (i) {
+                    final item = normalized[i];
+                    return SizedBox(width: cardWidth, child: _buildAppreciationCard(item, index: i));
+                  }),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Detailed view of property value growth over time',
-                style: GoogleFonts.sora(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 24),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.8,
-                ),
-                itemCount: appreciationData.length,
-                itemBuilder: (context, index) {
-                  return _buildAppreciationCard(appreciationData[index]);
-                },
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Portfolio Summary',
-                style: GoogleFonts.sora(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildSummaryCard(
-                      title: 'Total Appreciation',
-                      // value: '+₦${totalAppreciation.toStringAsFixed(2)}',
-                      value: formatCurrency(totalAppreciation, decimalDigits: 2),
-                      icon: Icons.trending_up,
-                      color: Colors.green,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildSummaryCard(
-                      title: 'Average Growth',
-                      value: '${averageGrowth.toStringAsFixed(2)}%',
-                      icon: Icons.percent,
-                      color: Colors.blue,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildSummaryCard(
-                title: 'Highest Growth',
-                value: highestGrowthProperty,
-                subtitle: '+${highestGrowth.toStringAsFixed(2)}%',
-                icon: Icons.star,
-                color: Colors.amber,
-              ),
-            ],
-          ),
-        );
+                const SizedBox(height: 22),
+                LayoutBuilder(builder: (ctx, c) {
+                  final isNarrow = c.maxWidth < 700;
+                  return isNarrow
+                      ? Column(
+                          children: [
+                            _buildSummaryCard(
+                                title: 'Total Appreciation',
+                                value: '+${formatCurrency(totalAppreciation)}',
+                                icon: Icons.trending_up,
+                                color: Colors.green),
+                            const SizedBox(height: 12),
+                            _buildSummaryCard(
+                                title: 'Average Growth',
+                                value: '${averageGrowth.toStringAsFixed(2)}%',
+                                icon: Icons.percent,
+                                color: Colors.blue),
+                            const SizedBox(height: 12),
+                            _buildSummaryCard(
+                                title: 'Highest Growth',
+                                value: highestGrowthProperty.isNotEmpty ? highestGrowthProperty : 'N/A',
+                                subtitle:
+                                    '+${highestGrowth.isFinite ? highestGrowth.toStringAsFixed(2) : '0.00'}%',
+                                icon: Icons.star,
+                                color: Colors.amber),
+                          ],
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _buildSummaryCard(
+                                  title: 'Total Appreciation',
+                                  value: '+${formatCurrency(totalAppreciation)}',
+                                  icon: Icons.trending_up,
+                                  color: Colors.green),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildSummaryCard(
+                                  title: 'Average Growth',
+                                  value: '${averageGrowth.toStringAsFixed(2)}%',
+                                  icon: Icons.percent,
+                                  color: Colors.blue),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildSummaryCard(
+                                  title: 'Highest Growth',
+                                  value: highestGrowthProperty.isNotEmpty ? highestGrowthProperty : 'N/A',
+                                  subtitle:
+                                      '+${highestGrowth.isFinite ? highestGrowth.toStringAsFixed(2) : '0.00'}%',
+                                  icon: Icons.star,
+                                  color: Colors.amber),
+                            ),
+                          ],
+                        );
+                }),
+                const SizedBox(height: 18),
+              ],
+            ),
+          );
+        });
       },
     );
   }
 
-  Widget _buildAppreciationCard(Map<String, dynamic> data) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+  Widget _emptyAppreciationPlaceholder() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.trending_up, size: 84, color: Colors.grey.shade300),
+          const SizedBox(height: 18),
+          Text('No Appreciation Data',
+              style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Text('Property appreciation data will appear here',
+              style: GoogleFonts.sora(color: Colors.grey)),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              data['estate_name'] ?? 'Unknown Estate',
-              style: GoogleFonts.sora(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+    );
+  }
+
+  Widget _miniSparkline(double progress, Color color) {
+    const int n = 7;
+    final bars = List<Widget>.generate(n, (i) {
+      final base = i / (n - 1);
+      final amplitude = 0.30 + (0.6 * progress);
+      final heightFactor = (0.30 + base * 0.70) * amplitude;
+      final h = (12.0 + heightFactor * 36.0).clamp(8.0, 56.0);
+
+      return Flexible(
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 520),
+            curve: Curves.easeOutCubic,
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            height: h,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  color.withOpacity(0.98 - i * 0.06),
+                  color.withOpacity(0.30 - i * 0.02),
+                ],
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              data['plot_size'] ?? 'N/A',
-              style: GoogleFonts.sora(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Purchase Price',
-                      style: GoogleFonts.sora(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    Text(
-                      '₦${data['purchase_price']?.toStringAsFixed(2) ?? '0.00'}',
-                      style: GoogleFonts.sora(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Current Value',
-                      style: GoogleFonts.sora(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    Text(
-                      '₦${data['current_value']?.toStringAsFixed(2) ?? '0.00'}',
-                      style: GoogleFonts.sora(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
+              borderRadius: BorderRadius.circular(6),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.08),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Value Increase',
-                      style: GoogleFonts.sora(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    Text(
-                      '+₦${data['appreciation_total']?.toStringAsFixed(2) ?? '0.00'}',
-                      style: GoogleFonts.sora(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
+          ),
+        ),
+      );
+    });
+
+    // area-like faded background to give "filled" impression (behind bars)
+    return SizedBox(
+      width: 132,
+      height: 56,
+      child: Stack(
+        children: [
+          // frothy area behind
+          Align(
+            alignment: Alignment.bottomLeft,
+            child: FractionallySizedBox(
+              widthFactor: 1.0,
+              heightFactor: 0.6,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [color.withOpacity(0.12), color.withOpacity(0.02)],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Growth Rate',
-                      style: GoogleFonts.sora(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    Text(
-                      '+${data['growth_rate']?.toStringAsFixed(2) ?? '0.00'}%',
-                      style: GoogleFonts.sora(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 100,
-              child: SfCartesianChart(
-                primaryXAxis: CategoryAxis(
-                  isVisible: false,
-                ),
-                series: <ChartSeries>[
-                  LineSeries<Map<String, dynamic>, String>(
-                    dataSource: [
-                      {'year': '2022', 'value': data['purchase_price'] ?? 0},
-                      {
-                        'year': '2023',
-                        'value': (data['purchase_price'] ?? 0) * 1.2
-                      },
-                      {'year': '2024', 'value': data['current_value'] ?? 0},
+          ),
+          // bars row
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: bars),
+          ),
+          // small highlighted dot at the end to indicate "now"
+          Positioned(
+            right: 8,
+            bottom: 12,
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: color.withOpacity(0.2), blurRadius: 6, offset: const Offset(0, 2))],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppreciationCard(Map<String, dynamic> data, {int index = 0}) {
+    final estateName = data['estate_name']?.toString() ?? 'Unknown Estate';
+    final plotSize = data['plot_size']?.toString() ?? 'N/A';
+    final purchasePrice = _toDouble(data['purchase_price']);
+    final currentValue = _toDouble(data['current_value']);
+    final appreciationTotal = _toDouble(data['appreciation_total']);
+    final growthRate = _toDouble(data['growth_rate']);
+    final absGrowthRate = _toDouble(data['abs_growth_rate']);
+    final transactionDate = data['transaction_date'] as DateTime?;
+    final purchaseLabel = transactionDate != null ? DateFormat('MMM yyyy').format(transactionDate) : 'Purchase';
+    final progress = (absGrowthRate / 100.0).clamp(0.0, 1.0);
+
+    final positive = growthRate >= 0;
+    final accent = positive ? Colors.green : Colors.red;
+
+    // card background: soft gradient + subtle "gloss" overlay
+    final cardGradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        Theme.of(context).cardColor,
+        Theme.of(context).cardColor.withOpacity(0.98),
+      ],
+    );
+
+    // subtle tinted layer to give depth (you can tweak opacity)
+    final tintGradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [accent.withOpacity(0.06), Colors.transparent],
+    );
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.995, end: 1.0),
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+      builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+        decoration: BoxDecoration(
+          gradient: cardGradient,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black.withOpacity(0.03)),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 18, offset: const Offset(0, 8)),
+            BoxShadow(color: Colors.white.withOpacity(0.02), blurRadius: 2, offset: const Offset(0, 1)),
+          ],
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 150, maxHeight: 380),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {}, // visual only
+              child: Stack(
+                children: [
+                  // tinted accent overlay
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: tintGradient,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // main content
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // header row (accent bar + title)
+                      Row(
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(6),
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [accent.withOpacity(0.98), accent.withOpacity(0.65)],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(estateName,
+                                    style: GoogleFonts.sora(fontSize: 15, fontWeight: FontWeight.w900),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Text(plotSize, style: GoogleFonts.sora(fontSize: 12, color: Colors.grey)),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.withOpacity(0.08),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text('Estate', style: GoogleFonts.sora(fontSize: 11, color: Colors.grey)),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // price row (stronger typography)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text('Purchase', style: GoogleFonts.sora(fontSize: 12, color: Colors.grey)),
+                              const SizedBox(height: 6),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(formatCurrency(purchasePrice, decimalDigits: 2),
+                                    style: GoogleFonts.roboto(fontSize: 15, fontWeight: FontWeight.w900)),
+                              ),
+                            ]),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                              Text('Now', style: GoogleFonts.roboto(fontSize: 12, color: Colors.grey)),
+                              const SizedBox(height: 6),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerRight,
+                                child: Text(formatCurrency(currentValue, decimalDigits: 2),
+                                    style: GoogleFonts.roboto(fontSize: 15, fontWeight: FontWeight.w900, color: accent)),
+                              ),
+                            ]),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // row: value increase + small growth pill
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text('Value Increase', style: GoogleFonts.roboto(fontSize: 12, color: Colors.grey)),
+                              const SizedBox(height: 6),
+                              Text(
+                                (appreciationTotal >= 0 ? '+' : '-') + formatCurrency(appreciationTotal.abs(), decimalDigits: 2),
+                                style: GoogleFonts.roboto(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900,
+                                    color: appreciationTotal >= 0 ? Colors.green : Colors.red),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ]),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: accent.withOpacity(0.10),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(positive ? Icons.trending_up : Icons.trending_down, size: 14, color: accent),
+                                const SizedBox(width: 6),
+                                Text('${growthRate >= 0 ? '+' : '-'}${growthRate.abs().toStringAsFixed(2)}%',
+                                    style: GoogleFonts.sora(fontSize: 12, fontWeight: FontWeight.w800, color: accent)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // sparkline + labels row (compact)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          _miniSparkline(progress, accent),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text('From', style: GoogleFonts.sora(fontSize: 12, color: Colors.grey)),
+                              const SizedBox(height: 4),
+                              Text(purchaseLabel, style: GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w700)),
+                            ]),
+                          ),
+                          const SizedBox(width: 8),
+                          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                            Text('Current', style: GoogleFonts.sora(fontSize: 12, color: Colors.grey)),
+                            const SizedBox(height: 4),
+                            Text(formatCurrency(currentValue, decimalDigits: 2),
+                                style: GoogleFonts.roboto(fontSize: 13, fontWeight: FontWeight.w800)),
+                          ]),
+                        ],
+                      ),
                     ],
-                    xValueMapper: (Map<String, dynamic> sales, _) =>
-                        sales['year'],
-                    yValueMapper: (Map<String, dynamic> sales, _) =>
-                        sales['value'],
-                    markerSettings: const MarkerSettings(isVisible: true),
-                    color: const Color(0xFF4154F1),
+                  ),
+
+                  // floating badge (smaller, more elegant)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [accent.withOpacity(0.98), accent.withOpacity(0.72)],
+                        ),
+                        borderRadius: BorderRadius.circular(28),
+                        boxShadow: [BoxShadow(color: accent.withOpacity(0.18), blurRadius: 8, offset: const Offset(0, 4))],
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(positive ? Icons.trending_up : Icons.trending_down, size: 14, color: Colors.white),
+                          const SizedBox(width: 6),
+                          Text('${growthRate >= 0 ? '+' : '-'}${growthRate.abs().toStringAsFixed(1)}%',
+                              style: GoogleFonts.sora(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1351,50 +1662,52 @@ class _ClientProfileState extends State<ClientProfile>
     required IconData icon,
     required Color color,
   }) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 360),
+      curve: Curves.easeOut,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.06)),
       ),
-      color: color.withOpacity(0.1),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: color, size: 24),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: GoogleFonts.sora(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: GoogleFonts.sora(fontSize: 14, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Flexible(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 360),
+                      child: Text(value,
+                          key: ValueKey(value),
+                          style: GoogleFonts.sora(fontSize: 16, fontWeight: FontWeight.bold, color: color),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              value,
-              style: GoogleFonts.sora(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: color,
+                  if (subtitle != null) ...[
+                    const SizedBox(width: 8),
+                    Text(subtitle, style: GoogleFonts.sora(fontSize: 13, color: Colors.grey)),
+                  ]
+                ],
               ),
-            ),
-            if (subtitle != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: GoogleFonts.sora(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-              ),
-            ],
-          ],
-        ),
+            ]),
+          )
+        ],
       ),
     );
   }
@@ -1403,15 +1716,11 @@ class _ClientProfileState extends State<ClientProfile>
     return FutureBuilder<Map<String, dynamic>>(
       future: _profileFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildShimmerLoader();
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
+        if (snapshot.connectionState == ConnectionState.waiting) return _buildShimmerLoader();
+        if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+
         final profile = snapshot.data!;
 
-        // Initialize controllers with profile data
         if (!_isEditing) {
           _fullNameController.text = profile['full_name'] ?? '';
           _aboutController.text = profile['about'] ?? '';
@@ -1424,186 +1733,308 @@ class _ClientProfileState extends State<ClientProfile>
           _isEditing = true;
         }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
+        Widget _input({
+          required TextEditingController controller,
+          required String label,
+          required IconData icon,
+          bool enabled = true,
+          TextInputType? keyboardType,
+          int maxLines = 1,
+          Widget? suffix,
+          String? hint,
+          String? Function(String?)? validator,
+        }) {
+          final fill = enabled ? Colors.white : Colors.grey.shade50;
+          final textColor = enabled ? null : Colors.grey.shade700;
+          return TextFormField(
+            controller: controller,
+            enabled: enabled,
+            readOnly: !enabled,
+            keyboardType: keyboardType,
+            maxLines: maxLines,
+            style: GoogleFonts.sora(color: textColor),
+            validator: (v) {
+              if (!enabled) return null;
+              if (validator != null) return validator(v);
+              return null;
+            },
+            decoration: InputDecoration(
+              labelText: label,
+              hintText: hint,
+              prefixIcon: Icon(icon, color: Colors.grey.shade600),
+              suffixIcon: suffix,
+              filled: true,
+              fillColor: fill,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.withOpacity(0.12)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF4154F1), width: 1.4),
+              ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.withOpacity(0.06)),
+              ),
+            ),
+          );
+        }
+
+        return Container(
+          color: Colors.white,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Stack(
-                    alignment: Alignment.bottomRight,
+                // Header card
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 18, offset: const Offset(0, 10))],
+                    border: Border.all(color: Colors.grey.withOpacity(0.06)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      CircleAvatar(
-                        radius: 60,
-                        backgroundImage: _imageFile != null
-                            ? FileImage(_imageFile!)
-                            : profile['profile_image'] != null
-                                ? NetworkImage(
-                                    profile['profile_image'] as String)
-                                : const AssetImage('assets/avater.webp')
-                                    as ImageProvider,
+                      // Avatar
+                      Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          CircleAvatar(
+                            radius: 48,
+                            backgroundColor: Colors.grey.shade100,
+                            backgroundImage: _imageFile != null
+                                ? FileImage(_imageFile!)
+                                : (profile['profile_image'] != null
+                                    ? NetworkImage(profile['profile_image'] as String)
+                                    : const AssetImage('assets/avater.webp')) as ImageProvider,
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(colors: [Color(0xFF4154F1), Color(0xFF6C7BFF)]),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                              onPressed: _pickImage,
+                              tooltip: 'Change profile picture',
+                            ),
+                          ),
+                        ],
                       ),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4154F1),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: IconButton(
-                          icon:
-                              const Icon(Icons.camera_alt, color: Colors.white),
-                          onPressed: _pickImage,
+
+                      const SizedBox(width: 16),
+
+                      // Info area (uses Expanded to avoid overflow)
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _fullNameController.text.isNotEmpty ? _fullNameController.text : 'Your name',
+                              style: GoogleFonts.sora(fontSize: 20, fontWeight: FontWeight.w900),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 8),
+
+                            // Chips area: wrap inside Expanded so it won't overflow horizontally
+                            LayoutBuilder(builder: (ctx, c) {
+                              return ConstrainedBox(
+                                constraints: BoxConstraints(maxWidth: c.maxWidth),
+                                child: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 6,
+                                  children: [
+                                    if (_jobController.text.isNotEmpty)
+                                      Chip(
+                                        backgroundColor: Colors.grey.shade50,
+                                        label: Text(_jobController.text, style: GoogleFonts.sora(fontSize: 12, color: Colors.grey.shade800)),
+                                      ),
+                                    if (_companyController.text.isNotEmpty)
+                                      Chip(
+                                        backgroundColor: Colors.grey.shade50,
+                                        label: Text(_companyController.text, style: GoogleFonts.sora(fontSize: 12, color: Colors.grey.shade800)),
+                                      ),
+                                    Chip(
+                                      backgroundColor: Colors.grey.shade50,
+                                      label: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                                          const SizedBox(width: 6),
+                                          Text(_countryController.text.isNotEmpty ? _countryController.text : 'Country', style: GoogleFonts.sora(fontSize: 12)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+
+                            const SizedBox(height: 8),
+                            Text(
+                              _aboutController.text.isNotEmpty ? _aboutController.text : 'A short friendly bio will appear here.',
+                              style: GoogleFonts.sora(fontSize: 13, color: Colors.grey.shade700),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: _fullNameController,
-                  decoration: InputDecoration(
-                    labelText: 'Full Name',
-                    prefixIcon: const Icon(Icons.person),
-                    border: OutlineInputBorder(
+
+                const SizedBox(height: 18),
+
+                // Form card
+                Form(
+                  key: _formKey,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 6))],
+                      border: Border.all(color: Colors.grey.withOpacity(0.04)),
                     ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your full name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _emailController,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: const Icon(Icons.email),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your email';
-                    }
-                    if (!value.contains('@')) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _aboutController,
-                  decoration: InputDecoration(
-                    labelText: 'About',
-                    prefixIcon: const Icon(Icons.info),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _companyController,
-                        decoration: InputDecoration(
-                          labelText: 'Company',
-                          prefixIcon: const Icon(Icons.business),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // About Me (prominent)
+                        Text('About Me', style: GoogleFonts.sora(fontSize: 14, fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 8),
+                        _input(
+                          controller: _aboutController,
+                          label: 'Tell us about yourself',
+                          icon: Icons.edit,
+                          enabled: true,
+                          maxLines: 5,
+                          hint: 'e.g. I build beautiful apps and love clean UI...',
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Responsive two-column section (fields)
+                        LayoutBuilder(builder: (ctx, constraints) {
+                          final twoCol = constraints.maxWidth >= 680;
+                          if (twoCol) {
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Left column
+                                Expanded(
+                                  child: Column(children: [
+                                    _input(
+                                      controller: _fullNameController,
+                                      label: 'Full Name',
+                                      icon: Icons.person,
+                                      enabled: false,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _input(controller: _companyController, label: 'Company', icon: Icons.business),
+                                    const SizedBox(height: 12),
+                                    _input(controller: _countryController, label: 'Country', icon: Icons.flag),
+                                  ]),
+                                ),
+                                const SizedBox(width: 12),
+
+                                // Right column
+                                Expanded(
+                                  child: Column(children: [
+                                    _input(
+                                      controller: _emailController,
+                                      label: 'Email',
+                                      icon: Icons.email,
+                                      enabled: false,
+                                      keyboardType: TextInputType.emailAddress,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _input(controller: _jobController, label: 'Job Title', icon: Icons.work),
+                                    const SizedBox(height: 12),
+                                    _input(
+                                      controller: _phoneController,
+                                      label: 'Phone',
+                                      icon: Icons.phone,
+                                      enabled: false,
+                                      keyboardType: TextInputType.phone,
+                                    ),
+                                  ]),
+                                ),
+                              ],
+                            );
+                          } else {
+                            return Column(children: [
+                              _input(controller: _fullNameController, label: 'Full Name', icon: Icons.person, enabled: false),
+                              const SizedBox(height: 12),
+                              _input(controller: _emailController, label: 'Email', icon: Icons.email, enabled: false, keyboardType: TextInputType.emailAddress),
+                              const SizedBox(height: 12),
+                              _input(controller: _companyController, label: 'Company', icon: Icons.business),
+                              const SizedBox(height: 12),
+                              _input(controller: _jobController, label: 'Job Title', icon: Icons.work),
+                              const SizedBox(height: 12),
+                              _input(controller: _phoneController, label: 'Phone', icon: Icons.phone, enabled: false, keyboardType: TextInputType.phone),
+                            ]);
+                          }
+                        }),
+
+                        const SizedBox(height: 14),
+
+                        _input(controller: _addressController, label: 'Address', icon: Icons.location_on),
+
+                        const SizedBox(height: 18),
+
+                        // BEAUTIFIED Save Changes (full-width, gradient, subtle shadow)
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _updateProfile,
+                            style: ButtonStyle(
+                              padding: MaterialStateProperty.all(const EdgeInsets.symmetric(vertical: 16)),
+                              shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                              elevation: MaterialStateProperty.all(8),
+                              shadowColor: MaterialStateProperty.all(Colors.black.withOpacity(0.18)),
+                              backgroundColor: MaterialStateProperty.resolveWith((states) {
+                                // gradient via Ink is not directly supported on ElevatedButton; use a Container below
+                                return Colors.transparent;
+                              }),
+                            ),
+                            child: Ink(
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(colors: [Color(0xFF4A6DF5), Color(0xFF4154F1)]),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Container(
+                                alignment: Alignment.center,
+                                constraints: const BoxConstraints(minHeight: 48),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.save, color: Colors.white, size: 18),
+                                    const SizedBox(width: 10),
+                                    Text('Save Changes', style: GoogleFonts.sora(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _jobController,
-                        decoration: InputDecoration(
-                          labelText: 'Job Title',
-                          prefixIcon: const Icon(Icons.work),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _countryController,
-                        decoration: InputDecoration(
-                          labelText: 'Country',
-                          prefixIcon: const Icon(Icons.flag),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _phoneController,
-                        decoration: InputDecoration(
-                          labelText: 'Phone',
-                          prefixIcon: const Icon(Icons.phone),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        keyboardType: TextInputType.phone,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _addressController,
-                  decoration: InputDecoration(
-                    labelText: 'Address',
-                    prefixIcon: const Icon(Icons.location_on),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _updateProfile,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4154F1),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      'Save Changes',
-                      style: GoogleFonts.sora(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
+
+                const SizedBox(height: 12),
               ],
             ),
           ),
@@ -1612,103 +2043,126 @@ class _ClientProfileState extends State<ClientProfile>
     );
   }
 
+
   Widget _buildPasswordTab() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Form(
         key: _passwordFormKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Change Password',
+              '🔒 Change Password',
               style: GoogleFonts.sora(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1A1D2E),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
-              'Ensure your account is secure with a strong password',
+              'Keep your account secure by choosing a strong password.',
               style: GoogleFonts.sora(
                 fontSize: 14,
-                color: Colors.grey,
+                color: Colors.grey[600],
+                height: 1.4,
               ),
             ),
+
+            const SizedBox(height: 28),
+
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _buildPasswordField(
+                    controller: _currentPasswordController,
+                    label: 'Current Password',
+                    icon: Icons.lock,
+                    isVisible: _currentVisible,
+                    toggleVisibility: () {
+                      setState(() => _currentVisible = !_currentVisible);
+                    },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your current password';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _buildPasswordField(
+                    controller: _newPasswordController,
+                    label: 'New Password',
+                    icon: Icons.lock_outline,
+                    isVisible: _newVisible,
+                    toggleVisibility: () {
+                      setState(() => _newVisible = !_newVisible);
+                    },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a new password';
+                      }
+                      if (value.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _buildPasswordField(
+                    controller: _confirmPasswordController,
+                    label: 'Confirm New Password',
+                    icon: Icons.lock_reset,
+                    isVisible: _confirmVisible,
+                    toggleVisibility: () {
+                      setState(() => _confirmVisible = !_confirmVisible);
+                    },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please confirm your new password';
+                      }
+                      if (value != _newPasswordController.text) {
+                        return 'Passwords do not match';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+
             const SizedBox(height: 32),
-            TextFormField(
-              controller: _currentPasswordController,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'Current Password',
-                prefixIcon: const Icon(Icons.lock),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your current password';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _newPasswordController,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'New Password',
-                prefixIcon: const Icon(Icons.lock_outline),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a new password';
-                }
-                if (value.length < 6) {
-                  return 'Password must be at least 6 characters';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _confirmPasswordController,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'Confirm New Password',
-                prefixIcon: const Icon(Icons.lock_reset),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please confirm your new password';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 32),
+
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 54,
               child: ElevatedButton(
                 onPressed: _changePassword,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4154F1),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
+                  elevation: 4,
                 ),
                 child: Text(
                   'Change Password',
                   style: GoogleFonts.sora(
                     fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
                 ),
@@ -1717,6 +2171,39 @@ class _ClientProfileState extends State<ClientProfile>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required bool isVisible,
+    required VoidCallback toggleVisibility,
+    required String? Function(String?) validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: !isVisible,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: const Color(0xFF4154F1)),
+        suffixIcon: IconButton(
+          icon: Icon(
+            isVisible ? Icons.visibility : Icons.visibility_off,
+            color: Colors.grey,
+          ),
+          onPressed: toggleVisibility,
+        ),
+        filled: true,
+        fillColor: Colors.grey[50],
+        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      validator: validator,
     );
   }
 
@@ -1766,12 +2253,23 @@ class _ClientProfileState extends State<ClientProfile>
     );
   }
 
-  // ------------------ BEAUTIFIED / ANIMATED PROFILE CARD ------------------
   Widget _buildProfileCard(Map<String, dynamic> profile) {
     final propertiesCount = _toInt(profile['properties_count']);
     final totalValue = _toDouble(profile['total_value']);
     final avatarUrl = profile['profile_image'] as String?;
-    final assigned = profile['assigned_marketer'] as Map<String, dynamic>?;
+    // final assigned = profile['assigned_marketer'] as Map<String, dynamic>?;
+    final dynamic assignedRaw = profile['assigned_marketer'];
+    Map<String, dynamic>? assigned;
+    if (assignedRaw == null) {
+      assigned = null;
+    } else if (assignedRaw is Map<String, dynamic>) {
+      assigned = Map<String, dynamic>.from(assignedRaw);
+    } else if (assignedRaw is Map) {
+      assigned = Map<String, dynamic>.from(assignedRaw.map((k, v) => MapEntry(k.toString(), v)));
+    } else {
+      assigned = null;
+    }
+
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
@@ -2082,10 +2580,19 @@ class _ClientProfileState extends State<ClientProfile>
     );
   }
 
-  // ------------------ STYLISH MARKETER BADGE ------------------
-  Widget _buildMarketerBadge(Map<String, dynamic> marketer) {
-    final name = marketer['full_name'] ?? 'Not assigned';
-    final avatar = marketer['avatar'] as String?;
+  Widget _buildMarketerBadge(Map<String, dynamic>? marketer) {
+    if (marketer == null) {
+      return const SizedBox.shrink();
+    }
+
+    final String name = (marketer['full_name']?.toString().isNotEmpty == true)
+        ? marketer['full_name'].toString()
+        : (marketer['name']?.toString().isNotEmpty == true ? marketer['name'].toString() : 'Not assigned');
+
+    String? avatarUrl = marketer['profile_image'] as String?;
+    avatarUrl ??= marketer['avatar'] as String?;
+    avatarUrl ??= marketer['image'] as String?;
+
     return AnimatedContainer(
       key: ValueKey(name),
       duration: const Duration(milliseconds: 520),
@@ -2107,25 +2614,21 @@ class _ClientProfileState extends State<ClientProfile>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (avatar != null && avatar.isNotEmpty)
-            CircleAvatar(radius: 10, backgroundImage: NetworkImage(avatar))
+          if (avatarUrl != null && avatarUrl.isNotEmpty)
+            CircleAvatar(radius: 12, backgroundImage: NetworkImage(avatarUrl))
           else
-            const CircleAvatar(radius: 10, child: Icon(Icons.person, size: 12)),
+            const CircleAvatar(radius: 12, child: Icon(Icons.person, size: 12)),
           const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Assigned Marketer',
-                style: GoogleFonts.sora(
-                    fontSize: 10, color: Colors.white.withOpacity(0.9)),
+                style: GoogleFonts.sora(fontSize: 10, color: Colors.white.withOpacity(0.9)),
               ),
               Text(
                 name,
-                style: GoogleFonts.sora(
-                    fontSize: 12,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700),
+                style: GoogleFonts.sora(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w700),
               ),
             ],
           ),
@@ -2134,7 +2637,7 @@ class _ClientProfileState extends State<ClientProfile>
     );
   }
 
-  // ------------------ CONTACT CARD (ACTIONS + ANIMATIONS) ------------------
+
   Widget _buildContactInfoCard(Map<String, dynamic> profile) {
     final email = profile['email'] ?? 'Not specified';
     final phone = profile['phone'] ?? 'Not specified';
@@ -2224,7 +2727,6 @@ class _ClientProfileState extends State<ClientProfile>
     );
   }
 
-  // contact table row with subtle ripple + copy affordance
   Widget _buildContactItem({
     required IconData icon,
     required String label,
@@ -2271,7 +2773,6 @@ class _ClientProfileState extends State<ClientProfile>
     );
   }
 
-  // ------------------ PROFILE DETAILS (EXPANDABLE ABOUT + GRID) ------------------
   Widget _buildProfileDetails(Map<String, dynamic> profile) {
     final about = profile['about'] as String? ?? 'No information provided';
     final rawDate = profile['date_registered'];
@@ -2451,7 +2952,6 @@ class _ClientProfileState extends State<ClientProfile>
     );
   }
 
-  // ------------------ SMALL CARD FOR INFO ITEMS ------------------
   Widget _buildInfoItem({required String label, required String value}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -2474,7 +2974,6 @@ class _ClientProfileState extends State<ClientProfile>
     );
   }
 
-  // ------------------ PORTFOLIO SUMMARY (SLEEK ROWS + PROGRESS) ------------------
   Widget _buildPortfolioSummaryCard({
     required int propertiesCount,
     required double totalValue,
@@ -2550,7 +3049,6 @@ class _ClientProfileState extends State<ClientProfile>
     );
   }
 
-  // ------------------ REFINED SUMMARY ROW ------------------
  
   Widget _buildSummaryItem({
     required String label,
@@ -2585,7 +3083,7 @@ class _ClientProfileState extends State<ClientProfile>
     );
   }
 
-  // ------------------ UPGRADED SHIMMER LOADER ------------------
+
   Widget _buildShimmerLoader() {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -2659,3 +3157,5 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
     return false;
   }
 }
+
+

@@ -4,12 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:real_estate_app/client/client_plot_details.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:real_estate_app/core/api_service.dart';
 import 'package:real_estate_app/shared/app_layout.dart';
 import 'package:real_estate_app/client/client_bottom_nav.dart';
 import 'package:real_estate_app/shared/header.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ClientProfile extends StatefulWidget {
   final String token;
@@ -117,9 +119,8 @@ class _ClientProfileState extends State<ClientProfile>
   @override
   void initState() {
     super.initState();
-    // Tab controller
+    
     _tabController = TabController(length: 5, vsync: this);
-    _appreciationFuture = ApiService().getValueAppreciation(token: widget.token);
 
     // Glow controller
     _glowController = AnimationController(
@@ -127,6 +128,7 @@ class _ClientProfileState extends State<ClientProfile>
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
 
+    _appreciationFuture = ApiService().getValueAppreciation(token: widget.token);
     _loadData();
   }
 
@@ -677,6 +679,59 @@ class _ClientProfileState extends State<ClientProfile>
     );
   }
 
+  // PLOT DETAILS HELPERS
+  int? _extractEstateId(Map<String, dynamic> p) {
+    if (p == null) return null;
+
+    // Common shape: transaction.allocation.estate.id
+    try {
+      final allocation = p['allocation'] ?? p['allocation'] ?? p['allocation_id'];
+      if (allocation is Map) {
+        final estate = allocation['estate'] ?? allocation['estate_id'] ?? allocation['estate_pk'];
+        if (estate is Map) {
+          final id = estate['id'] ?? estate['pk'];
+          if (id is int) return id;
+          if (id is String) return int.tryParse(id);
+        }
+        // sometimes allocation contains estate id directly
+        final estateIdDirect = allocation['estate_id'] ?? allocation['estate'];
+        if (estateIdDirect is int) return estateIdDirect;
+        if (estateIdDirect is String) return int.tryParse(estateIdDirect);
+      }
+    } catch (_) {}
+
+    // Fallback: top-level keys
+    final cand = p['estate_id'] ?? p['estate'] ?? p['estateId'] ?? p['id'] ?? p['pk'];
+    if (cand is int) return cand;
+    if (cand is String) return int.tryParse(cand);
+    return null;
+  }
+  // PLOT DETAILS HELPERS
+  int? _extractPlotSizeId(Map<String, dynamic> p) {
+    if (p == null) return null;
+
+    // Common shape: transaction.allocation.plot_size.id or allocation.plot_size
+    try {
+      final allocation = p['allocation'] ?? p['allocation'] ?? p['allocation_id'];
+      if (allocation is Map) {
+        final ps = allocation['plot_size'] ?? allocation['plotSize'] ?? allocation['plot_size_id'];
+        if (ps is Map) {
+          final id = ps['id'] ?? ps['pk'];
+          if (id is int) return id;
+          if (id is String) return int.tryParse(id);
+        }
+        if (ps is int) return ps;
+        if (ps is String) return int.tryParse(ps);
+      }
+    } catch (_) {}
+
+    // fallbacks
+    final cand = p['plot_size_id'] ?? p['plot_size'] ?? p['plotSize'] ?? p['plotSizeId'];
+    if (cand is int) return cand;
+    if (cand is String) return int.tryParse(cand);
+    return null;
+  }
+
 
   Widget _buildPropertyCard(Map<String, dynamic> property, int index) {
     final String estateName =
@@ -839,27 +894,59 @@ class _ClientProfileState extends State<ClientProfile>
                     ),
                     const Spacer(),
                     // receipts button
+                    // OutlinedButton.icon(
+                    //   onPressed: () {
+                    //     // implement receipt view
+                    //   },
+                    //   icon: const Icon(Icons.receipt, size: 16),
+                    //   label: Text('Receipts',
+                    //       style: GoogleFonts.sora(fontSize: 14)),
+                    //   style: OutlinedButton.styleFrom(
+                    //     padding: const EdgeInsets.symmetric(
+                    //         horizontal: 14, vertical: 10),
+                    //     shape: RoundedRectangleBorder(
+                    //         borderRadius: BorderRadius.circular(12)),
+                    //   ),
+                    // ),
+                    
                     OutlinedButton.icon(
                       onPressed: () {
-                        // implement receipt view
+                        final int? estateId = _extractEstateId(property);
+                        final int? plotSizeId = _extractPlotSizeId(property);
+
+                        if (estateId == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Estate details not available for this property')),
+                          );
+                          return;
+                        }
+
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ClientEstatePlotDetailsPage(
+                              estateId: estateId,
+                              token: widget.token,
+                              plotSizeId: plotSizeId,
+                            ),
+                          ),
+                        );
                       },
-                      icon: const Icon(Icons.receipt, size: 16),
-                      label: Text('Receipts',
-                          style: GoogleFonts.sora(fontSize: 14)),
+
+                      icon: const Icon(Icons.open_in_new),
+                      label: Text('Plot Details', style: GoogleFonts.sora(fontSize: 14)),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
+                    
                     const SizedBox(width: 8),
                     ElevatedButton.icon(
                       onPressed: () =>
                           _openPropertyDetailsModal(property, index),
-                      icon: const Icon(Icons.visibility, size: 16),
+                      icon: const Icon(Icons.visibility, size: 16, color: Colors.white),
                       label:
-                          Text('View', style: GoogleFonts.sora(fontSize: 14)),
+                          Text('Transactions', style: GoogleFonts.sora(fontSize: 14, color: Colors.white)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF4154F1),
                         padding: const EdgeInsets.symmetric(
@@ -899,7 +986,206 @@ class _ClientProfileState extends State<ClientProfile>
   }
 
 
+  Widget _buildInfoChip(String label, String value) {
+    return Chip(
+      backgroundColor: Colors.grey[100],
+      label: Row(mainAxisSize: MainAxisSize.min, children: [
+        Text('$label: ', style: GoogleFonts.sora(fontSize: 13, color: Colors.grey[700])),
+        const SizedBox(width: 6),
+        Text(value.isNotEmpty ? value : '—', style: GoogleFonts.roboto(fontSize: 13, fontWeight: FontWeight.w600)),
+      ]),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    );
+  }
+
   void _openPropertyDetailsModal(Map<String, dynamic> property, int index) {
+    final api = ApiService();
+
+    int? _extractTransactionId(Map<String, dynamic> p) {
+      final cand = p['id'] ??
+          p['transaction_id'] ??
+          p['transactionId'] ??
+          p['tx_id'] ??
+          p['transaction'];
+      if (cand == null) return null;
+      if (cand is int) return cand;
+      if (cand is String) return int.tryParse(cand);
+      if (cand is Map && cand['id'] != null) {
+        final id = cand['id'];
+        if (id is int) return id;
+        if (id is String) return int.tryParse(id);
+      }
+      return null;
+    }
+
+    final int? txId = _extractTransactionId(property);
+
+    Future<Map<String, dynamic>> _fetchTxAndPayments(int id) async {
+      final Map<String, dynamic> result = {
+        'transaction': <String, dynamic>{},
+        'payments': <dynamic>[]
+      };
+      try {
+        final tx = await api.getTransactionDetail(token: widget.token, transactionId: id);
+        result['transaction'] = tx ?? <String, dynamic>{};
+      } catch (e) {
+        result['transaction'] = <String, dynamic>{};
+      }
+      try {
+        final payments = await api.getTransactionPayments(token: widget.token, transactionId: id);
+        result['payments'] = payments ?? <dynamic>[];
+      } catch (e) {
+        result['payments'] = <dynamic>[];
+      }
+      return result;
+    }
+
+    String _safeString(dynamic v) {
+      if (v == null) return '';
+      return v.toString();
+    }
+
+    double _toDouble(dynamic v) {
+      if (v == null) return 0.0;
+      if (v is double) return v;
+      if (v is int) return v.toDouble();
+      if (v is String) {
+        final cleaned = v.replaceAll(RegExp(r'[^0-9\.-]'), '');
+        return double.tryParse(cleaned) ?? 0.0;
+      }
+      return 0.0;
+    }
+
+    String formatCurrency(num value, {int decimalDigits = 2}) {
+      try {
+        final f = NumberFormat.currency(locale: 'en_NG', symbol: '₦', decimalDigits: decimalDigits);
+        return f.format(value);
+      } catch (e) {
+        return '₦' + value.toStringAsFixed(decimalDigits);
+      }
+    }
+
+    Color _getStatusColor(String status) {
+      final s = status.toLowerCase();
+      if (s.contains('paid') || s.contains('fully paid') || s.contains('paid complete')) return const Color(0xFF34c759);
+      if (s.contains('overdue')) return Colors.red;
+      if (s.contains('part')) return Colors.orange;
+      return Colors.grey;
+    }
+
+    // High-level: try fetch+save+open via ApiService, fallback to web URL if that fails
+    // Future<void> _openReceiptAuthenticated({String? reference, int? txId}) async {
+    //   final base = api.baseUrl.endsWith('/') ? api.baseUrl.substring(0, api.baseUrl.length - 1) : api.baseUrl;
+
+    //   try {
+    //     final String path = await api.fetchAndSaveReceipt(token: widget.token, txId: txId, reference: reference);
+    //     await api.openReceiptFile(path);
+    //     return;
+    //   } catch (e) {
+    //     // fallback to web URL(s)
+    //     try {
+    //       if (reference != null && reference.isNotEmpty) {
+    //         final uriRef = Uri.parse('$base/payment/receipt/${Uri.encodeComponent(reference)}/');
+    //         if (await canLaunchUrl(uriRef)) {
+    //           await launchUrl(uriRef, mode: LaunchMode.externalApplication);
+    //           return;
+    //         } else {
+    //           await launchUrl(uriRef);
+    //           return;
+    //         }
+    //       }
+
+    //       if (txId != null) {
+    //         final txUri = Uri.parse('$base/clients/transaction/$txId/receipt/');
+    //         if (await canLaunchUrl(txUri)) {
+    //           await launchUrl(txUri, mode: LaunchMode.externalApplication);
+    //           return;
+    //         } else {
+    //           await launchUrl(txUri);
+    //           return;
+    //         }
+    //       }
+    //     } catch (fallbackErr) {
+    //       // ignore fallback error; show final snackbar below
+    //     }
+
+    //     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Receipt not available: $e')));
+    //   }
+    // }
+
+    Future<void> _openReceiptAuthenticated({String? reference, int? txId}) async {
+      final api = ApiService();
+
+      // Show progress dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => WillPopScope(
+          onWillPop: () async => false,
+          child: AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                CircularProgressIndicator(),
+                SizedBox(height: 12),
+                Text('Downloading receipt...'),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      try {
+        File file;
+        if (reference != null && reference.isNotEmpty) {
+          file = await api.downloadReceiptByReference(
+            token: widget.token,
+            reference: reference,
+            onProgress: (received, total) {},
+            openAfterDownload: true,
+          );
+        } else if (txId != null) {
+          file = await api.downloadReceiptByTransactionId(
+            token: widget.token,
+            transactionId: txId,
+            onProgress: (r, t) {},
+            openAfterDownload: true,
+          );
+        } else {
+          throw Exception('No receipt reference or transaction id available');
+        }
+
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Receipt saved: ${file.path}'))
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+          // Update fallback URLs to match Django patterns
+          try {
+            if (reference != null && reference.isNotEmpty) {
+              final uriRef = Uri.parse('${ApiService().baseUrl.replaceAll(RegExp(r'/api/?$'), '')}/payment/receipt/${Uri.encodeComponent(reference)}/');
+              launchUrl(uriRef, mode: LaunchMode.externalApplication);
+            } else if (txId != null) {
+              final txUri = Uri.parse('${ApiService().baseUrl.replaceAll(RegExp(r'/api/?$'), '')}/transaction/$txId/receipt/');
+              launchUrl(txUri, mode: LaunchMode.externalApplication);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Receipt not available: $e'))
+              );
+            }
+          } catch (_) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Receipt download failed: $e'))
+            );
+          }
+        }
+      }
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -907,22 +1193,21 @@ class _ClientProfileState extends State<ClientProfile>
       builder: (ctx) {
         return DraggableScrollableSheet(
           expand: false,
-          initialChildSize: 0.75,
+          initialChildSize: 0.78,
           minChildSize: 0.45,
           maxChildSize: 0.95,
           builder: (context, scrollController) {
-            final String estateName =
-                (property['estate_name'] ?? 'Unknown Estate').toString();
-            final double purchasePrice = _toDouble(property['purchase_price']);
-            final String purchaseDate =
-                (property['purchase_date'] ?? 'N/A').toString();
-            final String status = (property['status'] ?? 'N/A').toString();
+            final String estateName = (property['estate_name'] ?? property['estate']?['name'] ?? 'Unknown Estate').toString();
+            final double purchasePrice = _toDouble(property['purchase_price'] ?? property['total_amount'] ?? 0);
+            final String purchaseDate = _safeString(property['purchase_date'] ?? property['transaction_date'] ?? '');
+            final String status = (property['status'] ?? '').toString();
+
+            final Future<Map<String, dynamic>>? combinedFuture = txId != null ? _fetchTxAndPayments(txId) : null;
 
             return Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(18)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
               ),
               child: SingleChildScrollView(
                 controller: scrollController,
@@ -930,124 +1215,422 @@ class _ClientProfileState extends State<ClientProfile>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // top handle
                     Center(
-                      child: Container(
-                        width: 48,
-                        height: 6,
-                        decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(4)),
-                      ),
+                      child: Container(width: 48, height: 6, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(4))),
                     ),
                     const SizedBox(height: 12),
 
-                    const SizedBox(height: 14),
-
                     Row(
                       children: [
-                        Expanded(
-                          child: Text(estateName,
-                              style: GoogleFonts.sora(
-                                  fontSize: 20, fontWeight: FontWeight.w700)),
-                        ),
+                        Expanded(child: Text(estateName, style: GoogleFonts.sora(fontSize: 20, fontWeight: FontWeight.w700))),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(status),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(status,
-                              style: GoogleFonts.sora(
-                                  fontSize: 13, color: Colors.white)),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(color: _getStatusColor(status), borderRadius: BorderRadius.circular(20)),
+                          child: Text(status.isNotEmpty ? status : 'Unknown', style: GoogleFonts.sora(fontSize: 13, color: Colors.white)),
                         )
                       ],
                     ),
 
                     const SizedBox(height: 12),
-                    Text('Purchase Price',
-                        style:
-                            GoogleFonts.sora(fontSize: 13, color: Colors.grey)),
+                    Text('Purchase Price', style: GoogleFonts.sora(fontSize: 13, color: Colors.grey)),
                     const SizedBox(height: 6),
-                    Text(
-                      formatCurrency(purchasePrice, decimalDigits: 2),
-                      style: GoogleFonts.roboto(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.grey[600],),
-                    ),
+                    Text(formatCurrency(purchasePrice, decimalDigits: 2),
+                        style: GoogleFonts.roboto(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.grey[700])),
                     const SizedBox(height: 12),
-                    
-                    Row(
-                      children: [
-                        Icon(Icons.calendar_today,
-                            size: 16, color: Colors.grey[700]),
-                        const SizedBox(width: 8),
-                        Text('Purchased on $purchaseDate',
-                            style: GoogleFonts.sora(
-                                fontSize: 13, color: Colors.grey[800])),
-                      ],
-                    ),
+
+                    Row(children: [
+                      const Icon(Icons.calendar_today, size: 16),
+                      const SizedBox(width: 8),
+                      Text('Purchased on ${purchaseDate.isNotEmpty ? purchaseDate : 'N/A'}', style: GoogleFonts.sora(fontSize: 13, color: Colors.grey[800])),
+
+                    ]),
 
                     const SizedBox(height: 18),
-
-                    Text('Property Details',
-                        style: GoogleFonts.sora(
-                            fontSize: 16, fontWeight: FontWeight.w700)),
+                    Text('Property Details', style: GoogleFonts.sora(fontSize: 16, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 8),
-                    // descriptive fields (fallback to defaults)
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 10,
-                      children: [
-                        _buildInfoChip('Plot Number',
-                            property['plot_number']?.toString() ?? 'Reserved'),
-                        _buildInfoChip('Plot Size',
-                            property['plot_size']?.toString() ?? 'N/A'),
-                        _buildInfoChip('Estate',
-                            property['estate_name']?.toString() ?? 'N/A'),
-                        _buildInfoChip('Receipt',
-                            property['receipt_number']?.toString() ?? 'N/A'),
-                      ],
-                    ),
+                    Wrap(spacing: 12, runSpacing: 10, children: [
+                      _buildInfoChip('Plot Number', property['plot_number']?.toString() ?? 'Reserved'),
+                      _buildInfoChip('Plot Size', property['plot_size']?.toString() ?? 'N/A'),
+                      _buildInfoChip('Estate', estateName),
+                      _buildInfoChip('Receipt', property['receipt_number']?.toString() ?? property['reference_code']?.toString() ?? '—'),
+                    ]),
 
                     const SizedBox(height: 20),
 
-                    // action buttons
-                    Row(
-                      children: [
+                    // Row(children: [
+                    //   Expanded(
+                    //     child: OutlinedButton.icon(
+                    //       onPressed: () async {
+                    //         final ref = (property['reference_code'] ?? property['receipt_number'] ?? property['receipt'] ?? '').toString();
+                    //         if (ref.isNotEmpty || txId != null) {
+                    //           await _openReceiptAuthenticated(reference: ref.isNotEmpty ? ref : null, txId: txId);
+                    //         } else {
+                    //           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No receipt available')));
+                    //         }
+                    //       },
+                    //       icon: const Icon(Icons.download_rounded),
+                    //       label: Text('Download Receipt', style: GoogleFonts.sora()),
+                    //       style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    //     ),
+                    //   ),
+                    //   const SizedBox(width: 12),
+                    //   Expanded(
+                    //     child: ElevatedButton.icon(
+                    //       onPressed: () {},
+                    //       icon: const Icon(Icons.open_in_new),
+                    //       label: Text('Open Property', style: GoogleFonts.sora()),
+                    //       style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4154F1), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    //     ),
+                    //   ),
+                    // ]),
+
+                    // inside _openPropertyDetailsModal(...) where you build the modal's action row:
+
+                      Row(children: [
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () {
-                              // implement share or download receipt
+                              final int? estateId = _extractEstateId(property);
+                              final int? plotSizeId = _extractPlotSizeId(property);
+
+                              if (estateId == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Estate details not available for this property')),
+                                );
+                                return;
+                              }
+
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ClientEstatePlotDetailsPage(
+                                    estateId: estateId,
+                                    token: widget.token,
+                                    plotSizeId: plotSizeId,
+                                  ),
+                                ),
+                              );
                             },
-                            icon: const Icon(Icons.download_rounded),
-                            label: Text('Download Receipt',
-                                style: GoogleFonts.sora()),
+
+                            icon: const Icon(Icons.open_in_new),
+                            label: Text('View Plot Details', style: GoogleFonts.sora()),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                           ),
                         ),
+
                         const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              // navigate to full property page
-                            },
-                            icon: const Icon(Icons.open_in_new),
-                            label: Text('Open Property',
-                                style: GoogleFonts.sora()),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4154F1),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                        // Expanded(
+                        //   child: ElevatedButton.icon(
+                        //     onPressed: () => _openPropertyDetailsModal(property, index),
+                        //     icon: const Icon(Icons.visibility, size: 18),
+                        //     label: Text('Open Property', style: GoogleFonts.sora(color: Colors.white)),
+                        //     style: ElevatedButton.styleFrom(
+                        //       backgroundColor: const Color(0xFF4154F1),
+                        //       padding: const EdgeInsets.symmetric(vertical: 14),
+                        //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        //     ),
+                        //   ),
+                        // ),
+                      ]),
+
+
+                    const SizedBox(height: 24),
+                    Text('Transaction Details', style: GoogleFonts.sora(fontSize: 16, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+
+                    if (txId == null)
+                      Padding(padding: const EdgeInsets.symmetric(vertical: 8.0), child: Text('No transaction id available for this property.', style: GoogleFonts.sora(color: Colors.grey[700])))
+                    else
+                      FutureBuilder<Map<String, dynamic>>(
+                        future: combinedFuture,
+                        builder: (ctx, snap) {
+                          if (snap.connectionState == ConnectionState.waiting) {
+                            return const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Center(child: CircularProgressIndicator()));
+                          }
+                          if (snap.hasError) {
+                            return Padding(padding: const EdgeInsets.symmetric(vertical: 8.0), child: Text('Failed to load transaction: ${snap.error}', style: GoogleFonts.sora(color: Colors.red)));
+                          }
+
+                          final data = snap.data ?? <String, dynamic>{};
+                          final tx = (data['transaction'] is Map) ? Map<String, dynamic>.from(data['transaction']) : <String, dynamic>{};
+                          List<dynamic> payments = List<dynamic>.from(data['payments'] ?? <dynamic>[]);
+
+                          final double totalAmount = _toDouble(tx['total_amount'] ?? property['total_amount'] ?? property['purchase_price'] ?? 0);
+                          final String txDate = _safeString(tx['transaction_date'] ?? property['transaction_date'] ?? '');
+                          final String txStatus = _safeString(tx['status'] ?? property['status'] ?? '');
+                          final String ref = _safeString(tx['reference_code'] ?? tx['reference'] ?? tx['receipt_number'] ?? '');
+
+                          // sum existing payments
+                          double totalPaid = 0.0;
+                          for (final p in payments) {
+                            totalPaid += _toDouble(p['amount'] ?? p['amount_paid'] ?? p['paid'] ?? 0);
+                          }
+
+                          // helpers
+                          final bool looksPaidByStatus = txStatus.toLowerCase().contains('paid') ||
+                              txStatus.toLowerCase().contains('fully paid') ||
+                              txStatus.toLowerCase().contains('paid complete');
+
+                          final bool isFullAllocation = ((tx['allocation']?['payment_type'] ?? tx['payment_type'] ?? property['payment_type'])
+                                  ?.toString()
+                                  .toLowerCase() ==
+                              'full');
+
+                          // compute an initial computed balance for heuristics
+                          final double computedBalance = (totalAmount - totalPaid);
+
+                          // TOLERANCE for floating point comparisons (avoid tiny negative or near-zero showing)
+                          const double zeroTolerance = 0.01;
+
+                          // If status/allocation clearly indicates fully paid, force totals and optionally synthesize a payment row
+                          if (looksPaidByStatus || isFullAllocation) {
+                            totalPaid = totalAmount.clamp(0.0, double.infinity);
+
+                            if (payments.isEmpty) {
+                              final String syntheticRef = ref.isNotEmpty ? ref : (property['receipt_number']?.toString() ?? property['reference_code']?.toString() ?? '');
+                              if (syntheticRef.isNotEmpty && totalAmount > 0) {
+                                payments = [
+                                  {
+                                    'date': txDate,
+                                    'amount_paid': totalAmount,
+                                    'payment_method': tx['payment_method'] ?? property['payment_method'] ?? 'N/A',
+                                    'receipt_number': syntheticRef,
+                                    'reference_code': syntheticRef,
+                                    'installment': null,
+                                  }
+                                ];
+                              }
+                            }
+                          } else {
+                            // fallback: if no payments but computed balance is essentially zero, treat as paid
+                            if (payments.isEmpty) {
+                              final bool treatAsPaid = (computedBalance.abs() < zeroTolerance && totalAmount > 0);
+                              final String syntheticRef = ref.isNotEmpty ? ref : (property['receipt_number']?.toString() ?? property['reference_code']?.toString() ?? '');
+                              if (treatAsPaid && syntheticRef.isNotEmpty) {
+                                payments = [
+                                  {
+                                    'date': txDate,
+                                    'amount_paid': totalAmount,
+                                    'payment_method': tx['payment_method'] ?? property['payment_method'] ?? 'N/A',
+                                    'receipt_number': syntheticRef,
+                                    'reference_code': syntheticRef,
+                                    'installment': null,
+                                  }
+                                ];
+                                totalPaid = totalAmount;
+                              }
+                            }
+                          }
+
+                          // final balance (clamped to avoid negatives)
+                          final double balance = (totalAmount - totalPaid).clamp(0.0, double.infinity);
+                          final bool isZeroBalance = balance.abs() < zeroTolerance;
+
+                          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text('Total', style: GoogleFonts.sora(color: Colors.grey[700])),
+                                const SizedBox(height: 6),
+                                Text(formatCurrency(totalAmount, decimalDigits: 2), style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700)),
+                              ]),
+                              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                                Text('Date', style: GoogleFonts.sora(color: Colors.grey[700])),
+                                const SizedBox(height: 6),
+                                Text(txDate.isNotEmpty ? txDate : '—', style: GoogleFonts.sora()),
+                              ]),
+                            ]),
+                            const SizedBox(height: 12),
+
+                            Row(children: [
+                              if (ref.isNotEmpty)
+                                Padding(padding: const EdgeInsets.only(right: 12.0), child: Chip(label: Text(ref))),
+                              Chip(backgroundColor: _getStatusColor(txStatus), label: Text(txStatus.isNotEmpty ? txStatus : 'Unknown', style: const TextStyle(color: Colors.white))),
+                            ]),
+
+                            const SizedBox(height: 12),
+                            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                              Text('Payment Type', style: GoogleFonts.sora(fontWeight: FontWeight.w600)),
+                              Text(_safeString(tx['allocation']?['payment_type'] ?? tx['payment_type'] ?? property['payment_type'] ?? ''), style: GoogleFonts.sora()),
+                            ]),
+                            const SizedBox(height: 12),
+
+                            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text('Total Paid', style: GoogleFonts.sora(color: Colors.grey[700])),
+                                const SizedBox(height: 6),
+                                Text(formatCurrency(totalPaid, decimalDigits: 2), style: GoogleFonts.roboto(fontWeight: FontWeight.w700)),
+                              ]),
+                              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                                Text('Balance', style: GoogleFonts.sora(color: Colors.grey[700])),
+                                const SizedBox(height: 6),
+                                Text(formatCurrency(balance, decimalDigits: 2), style: GoogleFonts.roboto(fontWeight: FontWeight.w700, color: isZeroBalance ? Colors.green : Colors.red)),
+                              ]),
+                            ]),
+                            const SizedBox(height: 18),
+
+                            if ((_safeString(tx['allocation']?['payment_type'] ?? tx['payment_type'] ?? property['payment_type'] ?? '')).toLowerCase() == 'part') ...[
+                              const SizedBox(height: 8),
+                              Text('Installment Plan', style: GoogleFonts.sora(fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 8),
+                              Text(tx['installment_plan'] == 'custom' ? '${_safeString(tx['first_percent'])}%, ${_safeString(tx['second_percent'])}%, ${_safeString(tx['third_percent'])}%' : (_safeString(tx['installment_plan']).replaceAll('-', '%, ') + (tx['installment_plan'] != null ? '%' : '')), style: GoogleFonts.sora()),
+                              const SizedBox(height: 8),
+                              Wrap(spacing: 12, children: [
+                                _buildInfoChip('1st', formatCurrency(_toDouble(tx['first_installment'] ?? 0))),
+                                _buildInfoChip('2nd', formatCurrency(_toDouble(tx['second_installment'] ?? 0))),
+                                _buildInfoChip('3rd', formatCurrency(_toDouble(tx['third_installment'] ?? 0))),
+                              ]),
+                              const SizedBox(height: 12),
+                            ],
+
+                            Text('Payment Receipts', style: GoogleFonts.sora(fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 8),
+
+                            if (payments.isEmpty)
+                              Text('No payment records found.', style: GoogleFonts.sora(color: Colors.grey[700]))
+                            else
+                              ListView.separated(
+                                physics: const NeverScrollableScrollPhysics(),
+                                shrinkWrap: true,
+                                itemCount: payments.length,
+                                separatorBuilder: (_, __) => const Divider(height: 8),
+                                itemBuilder: (ctx, i) {
+                                  final p = Map<String, dynamic>.from(payments[i] ?? <String, dynamic>{});
+                                  final String date = _safeString(p['date'] ?? p['payment_date'] ?? '');
+                                  final double amt = _toDouble(p['amount'] ?? p['amount_paid'] ?? p['paid'] ?? 0);
+                                  final String method = _safeString(p['method'] ?? p['payment_method'] ?? '');
+                                  final String receiptRef = _safeString(p['receipt_number'] ?? p['reference_code'] ?? p['reference'] ?? p['receipt'] ?? '');
+                                  final int? installment = (p['installment'] is int) ? p['installment'] as int : (p['installment'] is String ? int.tryParse(p['installment']) : (p['selected_installment'] is int ? p['selected_installment'] as int : null));
+
+                                  return ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    dense: true,
+                                    leading: CircleAvatar(radius: 18, backgroundColor: Colors.grey[100], child: Text(installment != null ? installment.toString() : '-', style: GoogleFonts.sora())),
+                                    title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                      Text(formatCurrency(amt, decimalDigits: 2), style: GoogleFonts.roboto(fontWeight: FontWeight.w600)),
+                                      const SizedBox(height: 4),
+                                      Text('Ref: ${receiptRef.isNotEmpty ? receiptRef : '—'}', style: GoogleFonts.sora(fontSize: 12, color: Colors.grey[600])),
+                                    ]),
+                                    subtitle: Text('$method • ${date.isNotEmpty ? date : '—'}', style: GoogleFonts.sora(fontSize: 12)),
+                                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                      if (receiptRef.isNotEmpty)
+                                        IconButton(
+                                          icon: const Icon(Icons.copy, size: 18),
+                                          tooltip: 'Copy reference',
+                                          onPressed: () {
+                                            Clipboard.setData(ClipboardData(text: receiptRef));
+                                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reference copied to clipboard')));
+                                          },
+                                        ),
+                                      if (receiptRef.isNotEmpty)
+                                        // IconButton(
+                                        //   icon: const Icon(Icons.picture_as_pdf),
+                                        //   onPressed: () async {
+                                        //     if (receiptRef.isNotEmpty || txId != null) {
+                                        //       await _openReceiptAuthenticated(reference: receiptRef.isNotEmpty ? receiptRef : null, txId: txId);
+                                        //     } else {
+                                        //       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No receipt available')));
+                                        //     }
+                                        //   },
+                                        // ),
+                                        // if (receiptRef.isNotEmpty)
+                                        // IconButton(
+                                        //   icon: const Icon(Icons.picture_as_pdf),
+                                        //   tooltip: 'Download receipt PDF',
+                                        //   onPressed: () async {
+                                        //     if (receiptRef.isNotEmpty || txId != null) {
+                                        //       await _openReceiptAuthenticated(reference: receiptRef.isNotEmpty ? receiptRef : null, txId: txId);
+                                        //     } else {
+                                        //       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No receipt available')));
+                                        //     }
+                                        //   },
+                                        
+                                        
+                                        // ),
+
+                                      
+                                    if (receiptRef.isNotEmpty)
+                                      IconButton(
+                                        icon: const Icon(Icons.picture_as_pdf),
+                                        tooltip: 'Download receipt PDF',
+                                        onPressed: () async {
+                                          final api = ApiService();
+                                          final String? ref = receiptRef.isNotEmpty ? receiptRef : null;
+
+                                          if ((ref == null || ref.isEmpty) && txId == null) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('No receipt available')),
+                                            );
+                                            return;
+                                          }
+
+                                          // Show progress dialog
+                                          showDialog(
+                                            context: context,
+                                            barrierDismissible: false,
+                                            builder: (_) => WillPopScope(
+                                              onWillPop: () async => false,
+                                              child: AlertDialog(
+                                                content: Column(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: const [
+                                                    CircularProgressIndicator(),
+                                                    SizedBox(height: 12),
+                                                    Text('Downloading receipt...'),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          );
+
+                                          try {
+                                            File file;
+                                            if (ref != null && ref.isNotEmpty) {
+                                              file = await api.downloadReceiptByReference(
+                                                token: widget.token,
+                                                reference: ref,
+                                                onProgress: (received, total) {
+                                                  // Optional: update UI with progress
+                                                },
+                                                openAfterDownload: true,
+                                              );
+                                            } else {
+                                              file = await api.downloadReceiptByTransactionId(
+                                                token: widget.token,
+                                                transactionId: txId!,
+                                                onProgress: (received, total) {
+                                                  // Optional: update UI with progress
+                                                },
+                                                openAfterDownload: true,
+                                              );
+                                            }
+
+                                            if (mounted) {
+                                              Navigator.of(context, rootNavigator: true).pop();
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text('Receipt downloaded: ${file.path}')),
+                                              );
+                                            }
+                                          } catch (e) {
+                                            if (mounted) {
+                                              Navigator.of(context, rootNavigator: true).pop();
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text('Receipt download failed: $e')),
+                                              );
+                                            }
+                                          }
+                                        },
+                                      ),
+                                                                        
+                                    ]),
+                                  );
+                                },
+                              ),
+                            const SizedBox(height: 12),
+                          ]);
+                        },
+                      ),
 
                     const SizedBox(height: 24),
                   ],
@@ -1060,27 +1643,6 @@ class _ClientProfileState extends State<ClientProfile>
     );
   }
 
-
-  Widget _buildInfoChip(String title, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(title + ': ',
-              style: GoogleFonts.sora(fontSize: 12, color: Colors.grey[700])),
-          const SizedBox(width: 6),
-          Text(value,
-              style:
-                  GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
 
   Widget _buildAppreciationTab() {
     return FutureBuilder<dynamic>(
@@ -2258,8 +2820,10 @@ class _ClientProfileState extends State<ClientProfile>
     final totalValue = _toDouble(profile['total_value']);
     final avatarUrl = profile['profile_image'] as String?;
     // final assigned = profile['assigned_marketer'] as Map<String, dynamic>?;
+
     final dynamic assignedRaw = profile['assigned_marketer'];
     Map<String, dynamic>? assigned;
+
     if (assignedRaw == null) {
       assigned = null;
     } else if (assignedRaw is Map<String, dynamic>) {
@@ -2269,6 +2833,17 @@ class _ClientProfileState extends State<ClientProfile>
     } else {
       assigned = null;
     }
+    // final dynamic assignedRaw = profile['assigned_marketer'];
+    // Map<String, dynamic>? assigned;
+    // if (assignedRaw == null) {
+    //   assigned = null;
+    // } else if (assignedRaw is Map<String, dynamic>) {
+    //   assigned = Map<String, dynamic>.from(assignedRaw);
+    // } else if (assignedRaw is Map) {
+    //   assigned = Map<String, dynamic>.from(assignedRaw.map((k, v) => MapEntry(k.toString(), v)));
+    // } else {
+    //   assigned = null;
+    // }
 
 
     return Padding(
@@ -2438,6 +3013,7 @@ class _ClientProfileState extends State<ClientProfile>
                                     ),
                                   ],
                                 ),
+                              
                               ],
                             ),
                           ),
@@ -2449,7 +3025,6 @@ class _ClientProfileState extends State<ClientProfile>
                       // Animated stats row with a mini chart
                       Row(
                         children: [
-                          // Use Flexible so children can shrink more gracefully than Expanded
                           Flexible(
                             flex: 1,
                             child: TweenAnimationBuilder<double>(
@@ -2499,9 +3074,7 @@ class _ClientProfileState extends State<ClientProfile>
                               duration: const Duration(milliseconds: 1100),
                               builder: (context, value, child,) {
                                 final display = value >= 1000
-                                    // ? '₦${value.toStringAsFixed(0)}'
                                     ? formatCurrency(value, decimalDigits: 0)
-                                    // : '₦${value.toStringAsFixed(2)}';
                                     : formatCurrency(value, decimalDigits: 2);
                                 return Padding(
                                   padding: const EdgeInsets.only(
@@ -2514,7 +3087,7 @@ class _ClientProfileState extends State<ClientProfile>
                                         display,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.sora(
+                                        style: GoogleFonts.roboto(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
                                           color: const Color(0xFF10B981),
@@ -2881,7 +3454,7 @@ class _ClientProfileState extends State<ClientProfile>
                             showDialog(
                               context: context,
                               builder: (ctx) => AlertDialog(
-                                title: Text('About', style: GoogleFonts.sora()),
+                                title: Text('About Me', style: GoogleFonts.sora()),
                                 content: Text(about, style: GoogleFonts.sora()),
                                 actions: [
                                   TextButton(

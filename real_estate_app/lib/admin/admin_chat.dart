@@ -100,7 +100,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
       title: Row(
         children: [
           CircleAvatar(
-              backgroundImage: AssetImage('assets/admin_avatar.jpg')),
+              backgroundImage: AssetImage('assets/logo.png')),
           SizedBox(width: 10),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,

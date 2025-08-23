@@ -12,9 +12,11 @@ class MarketerNotifications extends StatelessWidget {
         backgroundColor: Colors.white,
         iconTheme: IconThemeData(color: Colors.black),
       ),
-      drawer: MarketerSidebar(onMenuItemTap: (route) {
-        Navigator.pushNamed(context, route);
-      }),
+      // drawer: MarketerSidebar(onMenuItemTap: (route) {
+      //   Navigator.pushNamed(context, route);
+      // }, 
+      
+      // ),
       body: Center(
         child: Text("Marketer Notifications Here!", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
       ),

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'marketer_sidebar.dart';
 
-class MarketerClients extends StatelessWidget {
-  const MarketerClients({super.key});
+class MarketerProfile extends StatelessWidget {
+  const MarketerProfile({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Marketer Client", style: TextStyle(color: Colors.black)),
+        title: Text("Marketer Profile", style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
         iconTheme: IconThemeData(color: Colors.black),
       ),
@@ -16,7 +16,7 @@ class MarketerClients extends StatelessWidget {
       //   Navigator.pushNamed(context, route);
       // }),
       body: Center(
-        child: Text("Marketer Client Here!", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        child: Text("Marketer Profile Here!", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
       ),
     );
   }

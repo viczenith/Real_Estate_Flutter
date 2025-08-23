@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:real_estate_app/admin/admin_add_estate_plot_size.dart';
 import 'package:real_estate_app/admin/admin_add_estate_plot_number.dart';
+import 'package:real_estate_app/client/client_notification.dart';
 import 'admin/theme_provider.dart';
 
 // Shared pages
@@ -40,8 +41,8 @@ import 'client/property_details.dart';
 // Marketer side
 import 'marketer/marketer_dashboard.dart';
 import 'marketer/marketer_clients.dart';
-import 'marketer/marketer_commission.dart';
 import 'marketer/marketer_notifications.dart';
+import 'package:real_estate_app/marketer/marketer_profile.dart';
 
 void main() {
   runApp(
@@ -106,6 +107,10 @@ class MyApp extends StatelessWidget {
         '/client-property-details': (context) {
           final token = ModalRoute.of(context)?.settings.arguments as String?;
           return PropertyDetailsPage(token: token ?? '');
+        },
+        '/client-notification': (context) {
+          final token = ModalRoute.of(context)?.settings.arguments as String?;
+          return ClientNotification(token: token ?? '');
         },
 
         // Admin side routes
@@ -191,7 +196,7 @@ class MyApp extends StatelessWidget {
           return MarketerDashboard(token: token ?? '');
         },
         '/marketer-clients': (context) => const MarketerClients(),
-        '/marketer-commission': (context) => const MarketerCommission(),
+        '/marketer-profile': (context) => const MarketerProfile(),
         '/marketer-notifications': (context) => const MarketerNotifications(),
       },
     );

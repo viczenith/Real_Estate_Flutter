@@ -1,4 +1,3 @@
-// lib/client/client_chat_admin.dart
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -103,7 +102,7 @@ class _ClientChatAdminState extends State<ClientChatAdmin> {
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                 child: Row(
                   children: const [
-                    CircleAvatar(backgroundImage: AssetImage('assets/admin_avatar.jpg')),
+                    CircleAvatar(backgroundImage: AssetImage('assets/logo.png')),
                     SizedBox(width: 12),
                     Expanded(
                       child: Column(

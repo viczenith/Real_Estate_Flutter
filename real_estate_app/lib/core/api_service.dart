@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:real_estate_app/admin/models/add_estate_plot_model.dart';
 import 'package:real_estate_app/admin/models/admin_chat_model.dart';
 import 'package:real_estate_app/admin/models/admin_dashboard_data.dart';
@@ -16,9 +18,10 @@ import 'package:real_estate_app/admin/models/estate_details_model.dart';
 import 'package:real_estate_app/admin/models/admin_user_registration.dart';
 import 'package:real_estate_app/admin/models/plot_allocation_model.dart';
 import 'package:real_estate_app/admin/models/plot_size_number_model.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ApiService {
-  final String baseUrl = 'http://10.199.204.208:8000/api';
+  final String baseUrl = 'http://172.24.49.208:8000/api';
 
   /// Login using username and password.
   Future<String> login(String email, String password) async {
@@ -1182,7 +1185,6 @@ class ApiService {
   }
 
   // ADMIN CLIENT CHAT LIST
-  /// Fetch list of client chats for the admin
   Future<List<Chat>> fetchClientChats(String token) async {
     try {
       final response = await http.get(
@@ -1262,6 +1264,62 @@ class ApiService {
 
 
   // CLIENT SIDE
+
+  /// Estate plot details Views
+  Future<Map<String, dynamic>> fetchClientEstatePlotDetail({
+    required int estateId,
+    required String token,
+    int? plotSizeId,
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    final clientPath = Uri.parse('$baseUrl/clients/estates/$estateId/')
+        .replace(queryParameters: plotSizeId != null ? {'plot_size': plotSizeId.toString()} : null);
+    final canonicalPath = Uri.parse('$baseUrl/estates/$estateId/')
+        .replace(queryParameters: plotSizeId != null ? {'plot_size': plotSizeId.toString()} : null);
+
+    Future<http.Response> _get(Uri uri) {
+      return http.get(uri, headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      }).timeout(timeout);
+    }
+
+    http.Response resp;
+    try {
+      resp = await _get(clientPath);
+      if (resp.statusCode == 404) {
+        // try canonical
+        resp = await _get(canonicalPath);
+      }
+    } on Exception {
+      // network/timeout -> rethrow to be handled by callers
+      rethrow;
+    }
+
+    // now handle resp as you already do: check status codes, decode, normalize, etc.
+    if (resp.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(resp.body) as Map<String, dynamic>;
+      // (run your normalize steps here)
+      return data;
+    }
+
+    // existing error handling...
+    switch (resp.statusCode) {
+      case 404:
+        throw Exception('Estate not found (404).');
+      case 401:
+        throw Exception('Authentication failed. Please re-login (401).');
+      case 403:
+        throw Exception('Permission denied (403).');
+      case 500:
+        throw Exception('Server error (500). Try again later.');
+      default:
+        throw Exception('Failed to load estate detail: ${resp.statusCode} - ${resp.body}');
+    }
+  }
+
+  // PROFILE METHODS
   Future<Map<String, dynamic>> getClientDetailByToken({
     required String token,
     Duration timeout = const Duration(seconds: 15),
@@ -1558,5 +1616,422 @@ class ApiService {
     } catch (_) {}
     throw Exception('$msg ${resp.body}');
   }
+
+
+
+  Future<List<dynamic>> fetchTransactionPaymentsApi({
+    required String token,
+    required int transactionId,
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    final uri = Uri.parse('$baseUrl/clients/transaction/payments/')
+        .replace(queryParameters: {'transaction_id': transactionId.toString()});
+
+    final resp = await http.get(
+      uri,
+      headers: {
+        'Authorization': 'Token $token',
+        'Accept': 'application/json',
+      },
+    ).timeout(timeout);
+
+    if (resp.statusCode == 200) {
+      final Map<String, dynamic> body = jsonDecode(resp.body) as Map<String, dynamic>;
+      final payments = body['payments'] as List<dynamic>? ?? <dynamic>[];
+      return payments;
+    }
+
+    String msg = 'Failed to load payments: ${resp.statusCode}';
+    try {
+      final j = jsonDecode(resp.body);
+      if (j is Map && j['detail'] != null) msg = j['detail'].toString();
+    } catch (_) {}
+    throw Exception('$msg ${resp.body}');
+  }
+
+
+
+  Future<File> downloadReceiptByReference({
+    required String token,
+    required String reference,
+    void Function(int, int)? onProgress,
+    bool openAfterDownload = true,
+    Duration timeout = const Duration(seconds: 60),
+  }) async {
+    final base = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    final safeRef = Uri.encodeComponent(reference);
+    // Remove '/clients' from the URL
+    final url = '$base/payment/receipt/$safeRef/';
+
+    final dir = await getTemporaryDirectory();
+    final filePath = '${dir.path}/receipt_$safeRef.pdf';
+    final file = File(filePath);
+
+    try {
+      final resp = await _dio.get<List<int>>(
+        url,
+        options: Options(
+          headers: {'Authorization': 'Token $token'},
+          responseType: ResponseType.bytes,
+          validateStatus: (s) => s != null && s < 500,
+        ),
+        onReceiveProgress: (rec, total) {
+          if (onProgress != null) onProgress(rec, total);
+        },
+      ).timeout(timeout);
+
+      final status = resp.statusCode ?? 0;
+      if (status == 200 && resp.data != null && resp.data!.isNotEmpty) {
+        await file.writeAsBytes(resp.data!, flush: true);
+        if (openAfterDownload) await OpenFile.open(file.path);
+        return file;
+      } else if (status == 403) {
+        throw Exception('Forbidden: you are not allowed to access this receipt (403)');
+      } else if (status == 404) {
+        throw Exception('Receipt not found (404)');
+      } else {
+        final text = resp.data != null ? String.fromCharCodes(resp.data!) : '';
+        throw Exception('Failed to download (status: $status) $text');
+      }
+    } on DioError catch (e) {
+      throw Exception('Network/download error: ${e.message}');
+    }
+  }
+
+  Future<File> downloadReceiptByTransactionId({
+    required String token,
+    required int transactionId,
+    void Function(int, int)? onProgress,
+    bool openAfterDownload = true,
+    Duration timeout = const Duration(seconds: 60),
+  }) async {
+    final base = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    // Remove '/clients' from the URL
+    final url = '$base/transaction/$transactionId/receipt/';
+
+    final dir = await getTemporaryDirectory();
+    final filePath = '${dir.path}/receipt_txn_$transactionId.pdf';
+    final file = File(filePath);
+
+    try {
+      final resp = await _dio.get<List<int>>(
+        url,
+        options: Options(
+          headers: {'Authorization': 'Token $token'},
+          responseType: ResponseType.bytes,
+          validateStatus: (s) => s != null && s < 500,
+        ),
+        onReceiveProgress: (rec, total) {
+          if (onProgress != null) onProgress(rec, total);
+        },
+      ).timeout(timeout);
+
+      final status = resp.statusCode ?? 0;
+      if (status == 200 && resp.data != null && resp.data!.isNotEmpty) {
+        await file.writeAsBytes(resp.data!, flush: true);
+        if (openAfterDownload) await OpenFile.open(file.path);
+        return file;
+      } else if (status == 403) {
+        throw Exception('Forbidden: you are not allowed to access this receipt (403)');
+      } else if (status == 404) {
+        throw Exception('Receipt not found (404)');
+      } else {
+        final text = resp.data != null ? String.fromCharCodes(resp.data!) : '';
+        throw Exception('Failed to download (status: $status) $text');
+      }
+    } on DioError catch (e) {
+      throw Exception('Network/download error: ${e.message}');
+    }
+  }
+  
+  
+  // Future<File> downloadReceiptByReference({
+  //     required String token,
+  //     required String reference,
+  //     void Function(int, int)? onProgress,
+  //     bool openAfterDownload = true,
+  //     Duration timeout = const Duration(seconds: 60),
+  //   }) async {
+  //     final base = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+  //     final safeRef = Uri.encodeComponent(reference);
+  //     final url = '$base/clients/payment/receipt/$safeRef/';
+
+  //     final dir = await getTemporaryDirectory();
+  //     final filePath = '${dir.path}/receipt_$safeRef.pdf';
+  //     final file = File(filePath);
+
+  //     try {
+  //       final resp = await _dio.get<List<int>>(
+  //         url,
+  //         options: Options(
+  //           headers: {'Authorization': 'Token $token'},
+  //           responseType: ResponseType.bytes,
+  //           validateStatus: (s) => s != null && s < 500,
+  //         ),
+  //         onReceiveProgress: (rec, total) {
+  //           if (onProgress != null) onProgress(rec, total);
+  //         },
+  //       ).timeout(timeout);
+
+  //       final status = resp.statusCode ?? 0;
+  //       if (status == 200 && resp.data != null && resp.data!.isNotEmpty) {
+  //         await file.writeAsBytes(resp.data!, flush: true);
+  //         if (openAfterDownload) await OpenFile.open(file.path);
+  //         return file;
+  //       } else if (status == 403) {
+  //         throw Exception('Forbidden: you are not allowed to access this receipt (403)');
+  //       } else if (status == 404) {
+  //         throw Exception('Receipt not found (404)');
+  //       } else {
+  //         final text = resp.data != null ? String.fromCharCodes(resp.data!) : '';
+  //         throw Exception('Failed to download (status: $status) $text');
+  //       }
+  //     } on DioError catch (e) {
+  //       throw Exception('Network/download error: ${e.message}');
+  //     }
+  //   }
+
+  // Future<File> downloadReceiptByTransactionId({
+  //   required String token,
+  //   required int transactionId,
+  //   void Function(int, int)? onProgress,
+  //   bool openAfterDownload = true,
+  //   Duration timeout = const Duration(seconds: 60),
+  // }) async {
+  //   final base = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+  //   final url = '$base/clients/transaction/$transactionId/receipt/';
+
+  //   final dir = await getTemporaryDirectory();
+  //   final filePath = '${dir.path}/receipt_txn_$transactionId.pdf';
+  //   final file = File(filePath);
+
+  //   try {
+  //     final resp = await _dio.get<List<int>>(
+  //       url,
+  //       options: Options(
+  //         headers: {'Authorization': 'Token $token'},
+  //         responseType: ResponseType.bytes,
+  //         validateStatus: (s) => s != null && s < 500,
+  //       ),
+  //       onReceiveProgress: (rec, total) {
+  //         if (onProgress != null) onProgress(rec, total);
+  //       },
+  //     ).timeout(timeout);
+
+  //     final status = resp.statusCode ?? 0;
+  //     if (status == 200 && resp.data != null && resp.data!.isNotEmpty) {
+  //       await file.writeAsBytes(resp.data!, flush: true);
+  //       if (openAfterDownload) await OpenFile.open(file.path);
+  //       return file;
+  //     } else if (status == 403) {
+  //       throw Exception('Forbidden: you are not allowed to access this receipt (403)');
+  //     } else if (status == 404) {
+  //       throw Exception('Receipt not found (404)');
+  //     } else {
+  //       final text = resp.data != null ? String.fromCharCodes(resp.data!) : '';
+  //       throw Exception('Failed to download (status: $status) $text');
+  //     }
+  //   } on DioError catch (e) {
+  //     throw Exception('Network/download error: ${e.message}');
+  //   }
+  // }
+
+  // NOTIFICATIONS
+  Future<List<dynamic>> getNotifications({
+    required String token,
+    bool? read,
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    final qp = <String, String>{};
+    if (read != null) qp['read'] = read ? 'true' : 'false';
+
+    final uri = Uri.parse('$baseUrl/client/notifications/${qp.isNotEmpty ? '?${Uri(queryParameters: qp).query}' : ''}');
+
+    final resp = await http.get(uri, headers: {
+      'Authorization': 'Token $token',
+      'Accept': 'application/json',
+    }).timeout(timeout);
+
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      final decoded = jsonDecode(resp.body);
+      List<dynamic> items = [];
+
+      // Handle common DRF shapes
+      if (decoded is List) {
+        items = decoded;
+      } else if (decoded is Map<String, dynamic>) {
+        if (decoded['results'] is List) {
+          items = decoded['results'];
+        } else if (decoded['data'] is List) {
+          items = decoded['data'];
+        } else if (decoded['notifications'] is List) {
+          items = decoded['notifications'];
+        } else {
+          // sometimes API returns single object -> wrap if it looks like a notification
+          // but prefer returning empty list to avoid surprises
+          items = <dynamic>[];
+        }
+      }
+
+      // Normalize each item to a safe Map<String,dynamic>
+      final normalized = items.map((e) {
+        if (e is Map<String, dynamic>) {
+          return _normalizeUserNotificationMap(Map<String, dynamic>.from(e));
+        }
+        // try to convert Map-like objects
+        if (e is Map) {
+          return _normalizeUserNotificationMap(Map<String, dynamic>.from(e.map((k, v) => MapEntry(k.toString(), v))));
+        }
+        return e;
+      }).toList();
+
+      return normalized;
+    }
+
+    String msg = 'Failed to load notifications: ${resp.statusCode}';
+    try {
+      final j = jsonDecode(resp.body);
+      if (j is Map && j['detail'] != null) msg = j['detail'].toString();
+    } catch (_) {}
+    throw Exception('$msg ${resp.body}');
+  }
+
+  Future<Map<String, dynamic>> getNotificationDetail({
+    required String token,
+    required int id,
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    final uri = Uri.parse('$baseUrl/client/notifications/$id/');
+
+    final resp = await http.get(uri, headers: {
+      'Authorization': 'Token $token',
+      'Accept': 'application/json',
+    }).timeout(timeout);
+
+    if (resp.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(resp.body) as Map<String, dynamic>;
+      return _normalizeUserNotificationMap(Map<String, dynamic>.from(data));
+    }
+
+    String msg = 'Failed to load notification detail: ${resp.statusCode}';
+    try {
+      final j = jsonDecode(resp.body);
+      if (j is Map && j['detail'] != null) msg = j['detail'].toString();
+    } catch (_) {}
+    throw Exception('$msg ${resp.body}');
+  }
+
+
+  Future<Map<String, dynamic>> markNotificationRead({
+    required String token,
+    required int id,
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    final uri = Uri.parse('$baseUrl/client/notifications/$id/mark-read/');
+
+    final resp = await http.post(uri, headers: {
+      'Authorization': 'Token $token',
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    }).timeout(timeout);
+
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      if (resp.body.isEmpty) return <String, dynamic>{};
+      try {
+        return jsonDecode(resp.body) as Map<String, dynamic>;
+      } catch (_) {
+        return <String, dynamic>{};
+      }
+    }
+
+    String msg = 'Failed to mark notification read: ${resp.statusCode}';
+    try {
+      final j = jsonDecode(resp.body);
+      if (j is Map && j['detail'] != null) msg = j['detail'].toString();
+    } catch (_) {}
+    throw Exception('$msg ${resp.body}');
+  }
+
+
+  Future<Map<String, int>> getNotificationStats({
+    required String token,
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    final uri = Uri.parse('$baseUrl/client/notifications/stats/');
+
+    final resp = await http.get(uri, headers: {
+      'Authorization': 'Token $token',
+      'Accept': 'application/json',
+    }).timeout(timeout);
+
+    if (resp.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(resp.body) as Map<String, dynamic>;
+      final unread = data['unread'];
+      final read = data['read'];
+      return {
+        'unread': (unread is int) ? unread : int.tryParse('$unread') ?? 0,
+        'read': (read is int) ? read : int.tryParse('$read') ?? 0,
+      };
+    }
+
+    String msg = 'Failed to load notification stats: ${resp.statusCode}';
+    try {
+      final j = jsonDecode(resp.body);
+      if (j is Map && j['detail'] != null) msg = j['detail'].toString();
+    } catch (_) {}
+    throw Exception('$msg ${resp.body}');
+  }
+
+  Map<String, dynamic> _normalizeUserNotificationMap(Map<String, dynamic> raw) {
+    final m = Map<String, dynamic>.from(raw);
+
+    if (m.containsKey('notification') && m['notification'] is Map) {
+      final n = Map<String, dynamic>.from(m['notification'] as Map);
+      n['title'] = n['title']?.toString() ?? (m['title']?.toString() ?? '');
+      n['message'] = n['message']?.toString() ?? (m['message']?.toString() ?? '');
+      n['created_at'] = n['created_at']?.toString() ?? (m['created_at']?.toString() ?? '');
+      n['notification_type'] = n['notification_type'] ?? n['type'] ?? m['notification_type'] ?? m['type'];
+      m['notification'] = n;
+    } else {
+      // Build fallback nested notification if API returned flattened fields
+      m['notification'] = <String, dynamic>{
+        'id': m['notification_id'] ?? m['id'],
+        'title': m['title']?.toString() ?? '',
+        'message': m['message']?.toString() ?? '',
+        'created_at': m['created_at']?.toString() ?? '',
+        'notification_type': m['notification_type'] ?? m['type'],
+      };
+    }
+
+    // Normalize 'read' to boolean
+    final r = m['read'];
+    if (r is bool) {
+      // nothing to do
+    } else if (r is String) {
+      m['read'] = r.toLowerCase() == 'true';
+    } else if (r is num) {
+      m['read'] = r != 0;
+    } else {
+      m['read'] = false;
+    }
+
+    // Normalize any image fields inside nested notification (optional)
+    try {
+      final notif = m['notification'] as Map<String, dynamic>;
+      for (final k in ['profile_image', 'image', 'floor_plan_image', 'prototype_image']) {
+        if (notif.containsKey(k) && notif[k] is String) {
+          final s = notif[k] as String;
+          if (s.isNotEmpty && !s.startsWith('http')) {
+            final prefix = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+            notif[k] = '$prefix$s';
+          }
+        }
+      }
+      m['notification'] = notif;
+    } catch (_) {}
+
+    return m;
+  }
+
 
 }

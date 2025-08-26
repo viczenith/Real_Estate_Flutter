@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:real_estate_app/shared/header.dart';
+import 'package:real_estate_app/shared/app_side.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:real_estate_app/shared/app_layout.dart';
 import 'package:real_estate_app/marketer/marketer_bottom_nav.dart';
@@ -42,7 +42,7 @@ class _MarketerDashboardState extends State<MarketerDashboard> {
   @override
   Widget build(BuildContext context) {
     return AppLayout(
-      pageTitle: 'Client Dashboard',
+      pageTitle: 'Marketer Dashboard',
       token: widget.token,
       side: AppSide.marketer,
       child: Scaffold(

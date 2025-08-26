@@ -58,7 +58,6 @@ class _MarketerBottomNavState extends State<MarketerBottomNav> {
     try {
       Navigator.of(context).pushReplacementNamed(routeName, arguments: widget.token ?? '');
     } catch (e) {
-      // Helpful debug info
       debugPrint('Navigation to $routeName failed: $e');
     }
   }

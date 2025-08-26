@@ -7,7 +7,7 @@ import 'package:real_estate_app/admin/models/admin_chat_model.dart';
 import 'package:real_estate_app/admin/models/admin_dashboard_data.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:mime/mime.dart'; 
+import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
 import 'dart:io';
 import 'package:real_estate_app/admin/models/add_plot_size.dart';
@@ -21,7 +21,7 @@ import 'package:real_estate_app/admin/models/plot_size_number_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ApiService {
-  final String baseUrl = 'http://172.24.49.208:8000/api';
+  final String baseUrl = 'http://10.187.129.208:8000/api';
 
   /// Login using username and password.
   Future<String> login(String email, String password) async {
@@ -1220,7 +1220,6 @@ class ApiService {
     }
   }
 
-
   Future<List<Message>> fetchChatThread(String token, String clientId) async {
     final response = await http.get(
       Uri.parse('$baseUrl/client-chats/$clientId/'),
@@ -1237,7 +1236,6 @@ class ApiService {
       throw Exception('Failed to load thread: ${response.statusCode}');
     }
   }
-
 
   Future<Message> sendAdminMessage({
     required String token,
@@ -1262,9 +1260,7 @@ class ApiService {
 
   requestPasswordReset(String mail) {}
 
-
   // CLIENT SIDE
-
   /// Estate plot details Views
   Future<Map<String, dynamic>> fetchClientEstatePlotDetail({
     required int estateId,
@@ -1272,10 +1268,12 @@ class ApiService {
     int? plotSizeId,
     Duration timeout = const Duration(seconds: 15),
   }) async {
-    final clientPath = Uri.parse('$baseUrl/clients/estates/$estateId/')
-        .replace(queryParameters: plotSizeId != null ? {'plot_size': plotSizeId.toString()} : null);
-    final canonicalPath = Uri.parse('$baseUrl/estates/$estateId/')
-        .replace(queryParameters: plotSizeId != null ? {'plot_size': plotSizeId.toString()} : null);
+    final clientPath = Uri.parse('$baseUrl/clients/estates/$estateId/').replace(
+        queryParameters:
+            plotSizeId != null ? {'plot_size': plotSizeId.toString()} : null);
+    final canonicalPath = Uri.parse('$baseUrl/estates/$estateId/').replace(
+        queryParameters:
+            plotSizeId != null ? {'plot_size': plotSizeId.toString()} : null);
 
     Future<http.Response> _get(Uri uri) {
       return http.get(uri, headers: {
@@ -1299,7 +1297,8 @@ class ApiService {
 
     // now handle resp as you already do: check status codes, decode, normalize, etc.
     if (resp.statusCode == 200) {
-      final Map<String, dynamic> data = jsonDecode(resp.body) as Map<String, dynamic>;
+      final Map<String, dynamic> data =
+          jsonDecode(resp.body) as Map<String, dynamic>;
       // (run your normalize steps here)
       return data;
     }
@@ -1315,7 +1314,8 @@ class ApiService {
       case 500:
         throw Exception('Server error (500). Try again later.');
       default:
-        throw Exception('Failed to load estate detail: ${resp.statusCode} - ${resp.body}');
+        throw Exception(
+            'Failed to load estate detail: ${resp.statusCode} - ${resp.body}');
     }
   }
 
@@ -1332,12 +1332,18 @@ class ApiService {
     }).timeout(timeout);
 
     if (resp.statusCode == 200) {
-      final Map<String, dynamic> data = jsonDecode(resp.body) as Map<String, dynamic>;
+      final Map<String, dynamic> data =
+          jsonDecode(resp.body) as Map<String, dynamic>;
 
       // --- normalize top-level profile_image to absolute URL ---
       final img = data['profile_image'];
-      if (img != null && img is String && img.isNotEmpty && !img.startsWith('http')) {
-        final prefix = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+      if (img != null &&
+          img is String &&
+          img.isNotEmpty &&
+          !img.startsWith('http')) {
+        final prefix = baseUrl.endsWith('/')
+            ? baseUrl.substring(0, baseUrl.length - 1)
+            : baseUrl;
         data['profile_image'] = '$prefix$img';
       }
 
@@ -1350,7 +1356,8 @@ class ApiService {
         if (amRaw is Map<String, dynamic>) {
           am = Map<String, dynamic>.from(amRaw);
         } else if (amRaw is Map) {
-          am = Map<String, dynamic>.from(amRaw.map((k, v) => MapEntry(k.toString(), v)));
+          am = Map<String, dynamic>.from(
+              amRaw.map((k, v) => MapEntry(k.toString(), v)));
         } else {
           // unexpected shape -> null
           data['assigned_marketer'] = null;
@@ -1363,16 +1370,21 @@ class ApiService {
             : (am['name']?.toString() ?? '');
 
         String? marketerImage;
-        if (am['profile_image'] is String && (am['profile_image'] as String).isNotEmpty) {
+        if (am['profile_image'] is String &&
+            (am['profile_image'] as String).isNotEmpty) {
           marketerImage = am['profile_image'] as String;
-        } else if (am['avatar'] is String && (am['avatar'] as String).isNotEmpty) {
+        } else if (am['avatar'] is String &&
+            (am['avatar'] as String).isNotEmpty) {
           marketerImage = am['avatar'] as String;
-        } else if (am['image'] is String && (am['image'] as String).isNotEmpty) {
+        } else if (am['image'] is String &&
+            (am['image'] as String).isNotEmpty) {
           marketerImage = am['image'] as String;
         }
 
         if (marketerImage != null && !marketerImage.startsWith('http')) {
-          final prefix = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+          final prefix = baseUrl.endsWith('/')
+              ? baseUrl.substring(0, baseUrl.length - 1)
+              : baseUrl;
           marketerImage = '$prefix$marketerImage';
         }
         am['profile_image'] = marketerImage;
@@ -1425,7 +1437,8 @@ class ApiService {
     if (email != null) request.fields['email'] = email;
 
     if (profileImage != null) {
-      final mimeType = lookupMimeType(profileImage.path) ?? 'application/octet-stream';
+      final mimeType =
+          lookupMimeType(profileImage.path) ?? 'application/octet-stream';
       final parts = mimeType.split('/');
       final multipartFile = await http.MultipartFile.fromPath(
         'profile_image',
@@ -1493,7 +1506,10 @@ class ApiService {
       final decoded = jsonDecode(resp.body);
       if (decoded is List) return decoded;
       if (decoded is Map) {
-        final alt = decoded['transactions'] ?? decoded['results'] ?? decoded['data'] ?? decoded['items'];
+        final alt = decoded['transactions'] ??
+            decoded['results'] ??
+            decoded['data'] ??
+            decoded['items'];
         if (alt is List) return alt;
       }
       // fallback: wrap single object in a list
@@ -1523,7 +1539,10 @@ class ApiService {
       final decoded = jsonDecode(resp.body);
       if (decoded is List) return decoded;
       if (decoded is Map) {
-        final alt = decoded['transactions'] ?? decoded['results'] ?? decoded['data'] ?? decoded['items'];
+        final alt = decoded['transactions'] ??
+            decoded['results'] ??
+            decoded['data'] ??
+            decoded['items'];
         if (alt is List) return alt;
       }
       return decoded is Map ? [decoded] : <dynamic>[];
@@ -1545,18 +1564,20 @@ class ApiService {
   }) async {
     final uri = Uri.parse('$baseUrl/clients/change-password/');
 
-    final resp = await http.post(
-      uri,
-      headers: {
-        'Authorization': 'Token $token',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'current_password': currentPassword,
-        'new_password': newPassword,
-      }),
-    ).timeout(timeout);
+    final resp = await http
+        .post(
+          uri,
+          headers: {
+            'Authorization': 'Token $token',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'current_password': currentPassword,
+            'new_password': newPassword,
+          }),
+        )
+        .timeout(timeout);
 
     if (resp.statusCode == 200 || resp.statusCode == 204) return;
 
@@ -1573,7 +1594,8 @@ class ApiService {
     required int transactionId,
     Duration timeout = const Duration(seconds: 15),
   }) async {
-    final uri = Uri.parse('$baseUrl/clients/transaction/$transactionId/details/');
+    final uri =
+        Uri.parse('$baseUrl/clients/transaction/$transactionId/details/');
 
     final resp = await http.get(uri, headers: {
       'Authorization': 'Token $token',
@@ -1597,7 +1619,8 @@ class ApiService {
     required int transactionId,
     Duration timeout = const Duration(seconds: 15),
   }) async {
-    final uri = Uri.parse('$baseUrl/clients/transaction/payments/?transaction_id=$transactionId');
+    final uri = Uri.parse(
+        '$baseUrl/clients/transaction/payments/?transaction_id=$transactionId');
 
     final resp = await http.get(uri, headers: {
       'Authorization': 'Token $token',
@@ -1605,8 +1628,9 @@ class ApiService {
     }).timeout(timeout);
 
     if (resp.statusCode == 200) {
-      final Map<String, dynamic> body = jsonDecode(resp.body) as Map<String, dynamic>;
-      return (body['payments'] as List<dynamic>) ;
+      final Map<String, dynamic> body =
+          jsonDecode(resp.body) as Map<String, dynamic>;
+      return (body['payments'] as List<dynamic>);
     }
 
     String msg = 'Failed to load payments: ${resp.statusCode}';
@@ -1616,8 +1640,6 @@ class ApiService {
     } catch (_) {}
     throw Exception('$msg ${resp.body}');
   }
-
-
 
   Future<List<dynamic>> fetchTransactionPaymentsApi({
     required String token,
@@ -1636,7 +1658,8 @@ class ApiService {
     ).timeout(timeout);
 
     if (resp.statusCode == 200) {
-      final Map<String, dynamic> body = jsonDecode(resp.body) as Map<String, dynamic>;
+      final Map<String, dynamic> body =
+          jsonDecode(resp.body) as Map<String, dynamic>;
       final payments = body['payments'] as List<dynamic>? ?? <dynamic>[];
       return payments;
     }
@@ -1649,8 +1672,6 @@ class ApiService {
     throw Exception('$msg ${resp.body}');
   }
 
-
-
   Future<File> downloadReceiptByReference({
     required String token,
     required String reference,
@@ -1658,7 +1679,9 @@ class ApiService {
     bool openAfterDownload = true,
     Duration timeout = const Duration(seconds: 60),
   }) async {
-    final base = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    final base = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
     final safeRef = Uri.encodeComponent(reference);
     // Remove '/clients' from the URL
     final url = '$base/payment/receipt/$safeRef/';
@@ -1686,7 +1709,8 @@ class ApiService {
         if (openAfterDownload) await OpenFile.open(file.path);
         return file;
       } else if (status == 403) {
-        throw Exception('Forbidden: you are not allowed to access this receipt (403)');
+        throw Exception(
+            'Forbidden: you are not allowed to access this receipt (403)');
       } else if (status == 404) {
         throw Exception('Receipt not found (404)');
       } else {
@@ -1705,7 +1729,9 @@ class ApiService {
     bool openAfterDownload = true,
     Duration timeout = const Duration(seconds: 60),
   }) async {
-    final base = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    final base = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
     // Remove '/clients' from the URL
     final url = '$base/transaction/$transactionId/receipt/';
 
@@ -1732,7 +1758,8 @@ class ApiService {
         if (openAfterDownload) await OpenFile.open(file.path);
         return file;
       } else if (status == 403) {
-        throw Exception('Forbidden: you are not allowed to access this receipt (403)');
+        throw Exception(
+            'Forbidden: you are not allowed to access this receipt (403)');
       } else if (status == 404) {
         throw Exception('Receipt not found (404)');
       } else {
@@ -1743,98 +1770,6 @@ class ApiService {
       throw Exception('Network/download error: ${e.message}');
     }
   }
-  
-  
-  // Future<File> downloadReceiptByReference({
-  //     required String token,
-  //     required String reference,
-  //     void Function(int, int)? onProgress,
-  //     bool openAfterDownload = true,
-  //     Duration timeout = const Duration(seconds: 60),
-  //   }) async {
-  //     final base = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
-  //     final safeRef = Uri.encodeComponent(reference);
-  //     final url = '$base/clients/payment/receipt/$safeRef/';
-
-  //     final dir = await getTemporaryDirectory();
-  //     final filePath = '${dir.path}/receipt_$safeRef.pdf';
-  //     final file = File(filePath);
-
-  //     try {
-  //       final resp = await _dio.get<List<int>>(
-  //         url,
-  //         options: Options(
-  //           headers: {'Authorization': 'Token $token'},
-  //           responseType: ResponseType.bytes,
-  //           validateStatus: (s) => s != null && s < 500,
-  //         ),
-  //         onReceiveProgress: (rec, total) {
-  //           if (onProgress != null) onProgress(rec, total);
-  //         },
-  //       ).timeout(timeout);
-
-  //       final status = resp.statusCode ?? 0;
-  //       if (status == 200 && resp.data != null && resp.data!.isNotEmpty) {
-  //         await file.writeAsBytes(resp.data!, flush: true);
-  //         if (openAfterDownload) await OpenFile.open(file.path);
-  //         return file;
-  //       } else if (status == 403) {
-  //         throw Exception('Forbidden: you are not allowed to access this receipt (403)');
-  //       } else if (status == 404) {
-  //         throw Exception('Receipt not found (404)');
-  //       } else {
-  //         final text = resp.data != null ? String.fromCharCodes(resp.data!) : '';
-  //         throw Exception('Failed to download (status: $status) $text');
-  //       }
-  //     } on DioError catch (e) {
-  //       throw Exception('Network/download error: ${e.message}');
-  //     }
-  //   }
-
-  // Future<File> downloadReceiptByTransactionId({
-  //   required String token,
-  //   required int transactionId,
-  //   void Function(int, int)? onProgress,
-  //   bool openAfterDownload = true,
-  //   Duration timeout = const Duration(seconds: 60),
-  // }) async {
-  //   final base = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
-  //   final url = '$base/clients/transaction/$transactionId/receipt/';
-
-  //   final dir = await getTemporaryDirectory();
-  //   final filePath = '${dir.path}/receipt_txn_$transactionId.pdf';
-  //   final file = File(filePath);
-
-  //   try {
-  //     final resp = await _dio.get<List<int>>(
-  //       url,
-  //       options: Options(
-  //         headers: {'Authorization': 'Token $token'},
-  //         responseType: ResponseType.bytes,
-  //         validateStatus: (s) => s != null && s < 500,
-  //       ),
-  //       onReceiveProgress: (rec, total) {
-  //         if (onProgress != null) onProgress(rec, total);
-  //       },
-  //     ).timeout(timeout);
-
-  //     final status = resp.statusCode ?? 0;
-  //     if (status == 200 && resp.data != null && resp.data!.isNotEmpty) {
-  //       await file.writeAsBytes(resp.data!, flush: true);
-  //       if (openAfterDownload) await OpenFile.open(file.path);
-  //       return file;
-  //     } else if (status == 403) {
-  //       throw Exception('Forbidden: you are not allowed to access this receipt (403)');
-  //     } else if (status == 404) {
-  //       throw Exception('Receipt not found (404)');
-  //     } else {
-  //       final text = resp.data != null ? String.fromCharCodes(resp.data!) : '';
-  //       throw Exception('Failed to download (status: $status) $text');
-  //     }
-  //   } on DioError catch (e) {
-  //     throw Exception('Network/download error: ${e.message}');
-  //   }
-  // }
 
   // NOTIFICATIONS
   Future<List<dynamic>> getNotifications({
@@ -1845,7 +1780,8 @@ class ApiService {
     final qp = <String, String>{};
     if (read != null) qp['read'] = read ? 'true' : 'false';
 
-    final uri = Uri.parse('$baseUrl/client/notifications/${qp.isNotEmpty ? '?${Uri(queryParameters: qp).query}' : ''}');
+    final uri = Uri.parse(
+        '$baseUrl/client/notifications/${qp.isNotEmpty ? '?${Uri(queryParameters: qp).query}' : ''}');
 
     final resp = await http.get(uri, headers: {
       'Authorization': 'Token $token',
@@ -1880,7 +1816,8 @@ class ApiService {
         }
         // try to convert Map-like objects
         if (e is Map) {
-          return _normalizeUserNotificationMap(Map<String, dynamic>.from(e.map((k, v) => MapEntry(k.toString(), v))));
+          return _normalizeUserNotificationMap(Map<String, dynamic>.from(
+              e.map((k, v) => MapEntry(k.toString(), v))));
         }
         return e;
       }).toList();
@@ -1909,7 +1846,8 @@ class ApiService {
     }).timeout(timeout);
 
     if (resp.statusCode == 200) {
-      final Map<String, dynamic> data = jsonDecode(resp.body) as Map<String, dynamic>;
+      final Map<String, dynamic> data =
+          jsonDecode(resp.body) as Map<String, dynamic>;
       return _normalizeUserNotificationMap(Map<String, dynamic>.from(data));
     }
 
@@ -1920,7 +1858,6 @@ class ApiService {
     } catch (_) {}
     throw Exception('$msg ${resp.body}');
   }
-
 
   Future<Map<String, dynamic>> markNotificationRead({
     required String token,
@@ -1952,7 +1889,6 @@ class ApiService {
     throw Exception('$msg ${resp.body}');
   }
 
-
   Future<Map<String, int>> getNotificationStats({
     required String token,
     Duration timeout = const Duration(seconds: 15),
@@ -1965,7 +1901,8 @@ class ApiService {
     }).timeout(timeout);
 
     if (resp.statusCode == 200) {
-      final Map<String, dynamic> data = jsonDecode(resp.body) as Map<String, dynamic>;
+      final Map<String, dynamic> data =
+          jsonDecode(resp.body) as Map<String, dynamic>;
       final unread = data['unread'];
       final read = data['read'];
       return {
@@ -1988,9 +1925,14 @@ class ApiService {
     if (m.containsKey('notification') && m['notification'] is Map) {
       final n = Map<String, dynamic>.from(m['notification'] as Map);
       n['title'] = n['title']?.toString() ?? (m['title']?.toString() ?? '');
-      n['message'] = n['message']?.toString() ?? (m['message']?.toString() ?? '');
-      n['created_at'] = n['created_at']?.toString() ?? (m['created_at']?.toString() ?? '');
-      n['notification_type'] = n['notification_type'] ?? n['type'] ?? m['notification_type'] ?? m['type'];
+      n['message'] =
+          n['message']?.toString() ?? (m['message']?.toString() ?? '');
+      n['created_at'] =
+          n['created_at']?.toString() ?? (m['created_at']?.toString() ?? '');
+      n['notification_type'] = n['notification_type'] ??
+          n['type'] ??
+          m['notification_type'] ??
+          m['type'];
       m['notification'] = n;
     } else {
       // Build fallback nested notification if API returned flattened fields
@@ -2018,11 +1960,18 @@ class ApiService {
     // Normalize any image fields inside nested notification (optional)
     try {
       final notif = m['notification'] as Map<String, dynamic>;
-      for (final k in ['profile_image', 'image', 'floor_plan_image', 'prototype_image']) {
+      for (final k in [
+        'profile_image',
+        'image',
+        'floor_plan_image',
+        'prototype_image'
+      ]) {
         if (notif.containsKey(k) && notif[k] is String) {
           final s = notif[k] as String;
           if (s.isNotEmpty && !s.startsWith('http')) {
-            final prefix = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+            final prefix = baseUrl.endsWith('/')
+                ? baseUrl.substring(0, baseUrl.length - 1)
+                : baseUrl;
             notif[k] = '$prefix$s';
           }
         }
@@ -2033,5 +1982,82 @@ class ApiService {
     return m;
   }
 
+  // MARKETER SIDE
 
+  // Profile Methods
+  Future<Map<String, dynamic>> getMarketerProfileByToken(
+      {required String token}) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/marketers/profile/'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load marketer profile');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateMarketerProfileDetails({
+    required String token,
+    String? about,
+    String? company,
+    String? job,
+    String? country,
+    File? profileImage,
+  }) async {
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/marketers/profile/update/'),
+    );
+
+    request.headers['Authorization'] = 'Token $token';
+
+    if (about != null) request.fields['about'] = about;
+    if (company != null) request.fields['company'] = company;
+    if (job != null) request.fields['job'] = job;
+    if (country != null) request.fields['country'] = country;
+
+    if (profileImage != null) {
+      request.files.add(await http.MultipartFile.fromPath(
+        'profile_image',
+        profileImage.path,
+      ));
+    }
+
+    final response = await request.send();
+    final responseData = await response.stream.bytesToString();
+
+    if (response.statusCode == 200) {
+      return json.decode(responseData);
+    } else {
+      throw Exception('Failed to update marketer profile');
+    }
+  }
+
+  Future<void> changeMarketerPassword({
+    required String token,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/marketers/change-password/'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to change password');
+    }
+  }
 }

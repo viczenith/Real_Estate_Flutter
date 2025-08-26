@@ -1,8 +1,435 @@
+// import 'package:flutter/material.dart';
+// import 'package:real_estate_app/client/client_sidebar.dart';
+// import 'package:real_estate_app/marketer/marketer_sidebar.dart';
+// import 'header.dart';
+// import 'package:real_estate_app/core/api_service.dart';
+
+// class AppLayout extends StatefulWidget {
+//   final Widget child;
+//   final String pageTitle;
+//   final String token;
+//   final AppSide side;
+
+//   const AppLayout({
+//     Key? key,
+//     required this.child,
+//     required this.pageTitle,
+//     required this.token,
+//     required this.side,
+//   }) : super(key: key);
+
+//   @override
+//   State<AppLayout> createState() => _AppLayoutState();
+// }
+
+// class _AppLayoutState extends State<AppLayout> {
+//   bool _isSidebarVisible = false;
+
+//   Map<String, dynamic>? clientData;
+//   bool _loadingClient = true;
+
+//   Map<String, dynamic>? marketerData;
+//   bool _loadingMarketer = true;
+
+//   // @override
+//   // void initState() {
+//   //   super.initState();
+//   //   WidgetsBinding.instance.addPostFrameCallback((_) {
+//   //     _loadClientData();
+//   //     _loadMarketerData();
+//   //   });
+//   // }
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _loadingClient = widget.side == AppSide.client;
+//     _loadingMarketer = widget.side == AppSide.marketer;
+
+//     WidgetsBinding.instance.addPostFrameCallback((_) {
+//       if (widget.side == AppSide.client) _loadClientData();
+//       if (widget.side == AppSide.marketer) _loadMarketerData();
+//     });
+//   }
+
+//   Future<void> _loadClientData() async {
+//   if (widget.side != AppSide.client) return;
+//   final api = ApiService();
+//   try {
+//     final data = await api.getClientDetailByToken(token: widget.token).timeout(const Duration(seconds: 10));
+//     setState(() {
+//       clientData = data;
+//     });
+//   } catch (e, st) {
+//     debugPrint('Failed to load client data: $e\n$st');
+//     clientData = null; // keep UI usable
+//   } finally {
+//     if (mounted) setState(() => _loadingClient = false);
+//   }
+// }
+
+//   Future<void> _loadMarketerData() async {
+//     if (widget.side != AppSide.marketer) return;
+//     final api = ApiService();
+//     try {
+//       final data = await api.getMarketerProfileByToken(token: widget.token).timeout(const Duration(seconds: 10));
+//       setState(() {
+//         marketerData = data;
+//       });
+//     } catch (e, st) {
+//       debugPrint('Failed to load marketer data: $e\n$st');
+//       marketerData = null;
+//     } finally {
+//       if (mounted) setState(() => _loadingMarketer = false);
+//     }
+//   }
+
+
+//   // Future<void> _loadClientData() async {
+//   //   if (widget.side == AppSide.client) {
+//   //     final api = ApiService();
+//   //     final data = await api.getClientDetailByToken(
+//   //       token: widget.token,
+//   //     );
+
+//   //     setState(() {
+//   //       clientData = data;
+//   //       _loadingClient = false;
+//   //     });
+//   //   } else {
+//   //     _loadingClient = false;
+//   //   }
+//   // }
+
+//   // Future<void> _loadMarketerData() async {
+//   //   if (widget.side == AppSide.marketer) {
+//   //     final api = ApiService();
+//   //     final data = await api.getMarketerProfileByToken(
+//   //       token: widget.token,
+//   //     );
+
+//   //     setState(() {
+//   //       marketerData = data;
+//   //       _loadingMarketer = false;
+//   //     });
+//   //   } else {
+//   //     _loadingMarketer = false;
+//   //   }
+//   // }
+
+
+
+//   void toggleSidebar(AppSide side) {
+//     setState(() {
+//       _isSidebarVisible = !_isSidebarVisible;
+//     });
+//   }
+
+//   void handleMenuItemTap(String route) {
+//     debugPrint('handleMenuItemTap -> $route');
+//     setState(() {
+//       _isSidebarVisible = false;
+//     });
+
+//     // For routes that need a token, pass it as arguments.
+//     final tokenRequired = {
+//       '/admin-dashboard',
+//       '/admin-clients',
+//       '/client-dashboard',
+//       '/client-profile',
+//       '/client-chat-admin',
+//       '/client-property-details',
+//       '/marketer-dashboard',
+//       '/marketer-clients',
+//       '/marketer-profile',
+//       '/marketer-notifications',
+//     };
+
+//     if (tokenRequired.contains(route)) {
+//       Navigator.pushNamed(context, route, arguments: widget.token);
+//     } else {
+//       Navigator.pushNamed(context, route);
+//     }
+//   }
+
+//   /// Build the appropriate sidebar for the active side.
+//   Widget _buildSidebar({required bool isExpanded}) {
+//     switch (widget.side) {
+//       case AppSide.client:
+//         // Client sidebar now shares the same API as AdminSidebar.
+//         return ClientSidebar(
+//           isExpanded: isExpanded,
+//           onMenuItemTap: handleMenuItemTap,
+//           onToggle: () => toggleSidebar(widget.side),
+//           profileImageUrl: clientData?['profile_image'],
+//           clientName: clientData?['full_name'] ?? "Client",
+//         );
+
+//       case AppSide.marketer:
+//         return MarketerSidebar(
+//           isExpanded: isExpanded,
+//           onMenuItemTap: handleMenuItemTap,
+//           onToggle: () => toggleSidebar(widget.side),
+//           profileImageUrl: marketerData?['profile_image'],
+//           marketerName: marketerData?['full_name'] ?? "Marketer",
+//         );
+
+//       case AppSide.admin:
+//         // TODO: Replace PlaceholderSidebar with your AdminSidebar when available.
+//         return PlaceholderSidebar(
+//           title: 'Admin',
+//           isExpanded: isExpanded,
+//           onMenuItemTap: handleMenuItemTap,
+//           onToggle: () => toggleSidebar(widget.side),
+//         );
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     // if (_loadingClient || _loadingMarketer) {
+//     //   return const Scaffold(
+//     //     body: Center(child: CircularProgressIndicator()),
+//     //   );
+//     // }
+//     if ((widget.side == AppSide.client && _loadingClient) ||
+//         (widget.side == AppSide.marketer && _loadingMarketer)) {
+//       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+//     }
+
+//     final screenWidth = MediaQuery.of(context).size.width;
+//     final isLargeScreen = screenWidth >= 1024;
+
+//     return Scaffold(
+//       appBar: SharedHeader(
+//         title: widget.pageTitle,
+//         side: widget.side,
+//         onMenuToggle: isLargeScreen ? null : (side) => toggleSidebar(side),
+//       ),
+//       body: Row(
+//         children: [
+//           // Persistent sidebar on large screens
+//           if (isLargeScreen)
+//             SizedBox(
+//               width: 250,
+//               child: _buildSidebar(isExpanded: true),
+//             ),
+
+//           // Main content area (and overlay sidebar on mobile)
+//           Expanded(
+//             child: Stack(
+//               children: [
+//                 // Background + content
+//                 Container(
+//                   decoration: const BoxDecoration(
+//                     gradient: LinearGradient(
+//                       begin: Alignment.topLeft,
+//                       end: Alignment.bottomRight,
+//                       colors: [Colors.white, Color(0xFFF5F3FF)],
+//                     ),
+//                   ),
+//                   child: widget.child,
+//                 ),
+
+//                 // Slide-in sidebar for small screens
+//                 if (!isLargeScreen)
+//                   AnimatedPositioned(
+//                     duration: const Duration(milliseconds: 300),
+//                     left: _isSidebarVisible ? 0 : -250,
+//                     top: 0,
+//                     bottom: 0,
+//                     child: SizedBox(
+//                       width: 250,
+//                       // when overlaying on mobile we show expanded content for clarity
+//                       child: _buildSidebar(isExpanded: true),
+//                     ),
+//                   ),
+//               ],
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// /// Simple placeholder sidebar widget that mirrors Admin/Client sidebar API.
+// /// Useful until you wire the marketer/admin implementations.
+// class PlaceholderSidebar extends StatelessWidget {
+//   final bool isExpanded;
+//   final ValueChanged<String> onMenuItemTap;
+//   final VoidCallback onToggle;
+//   final String title;
+
+//   const PlaceholderSidebar({
+//     Key? key,
+//     required this.isExpanded,
+//     required this.onMenuItemTap,
+//     required this.onToggle,
+//     required this.title,
+//   }) : super(key: key);
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final double width = isExpanded ? 240 : 72;
+
+//     return AnimatedContainer(
+//       duration: const Duration(milliseconds: 300),
+//       width: width,
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(0.08),
+//             blurRadius: 18,
+//             offset: const Offset(4, 6),
+//           )
+//         ],
+//         borderRadius: const BorderRadius.only(
+//             topRight: Radius.circular(16), bottomRight: Radius.circular(16)),
+//       ),
+//       child: Column(
+//         children: [
+//           // Header
+//           Container(
+//             padding: EdgeInsets.symmetric(
+//                 vertical: 20, horizontal: isExpanded ? 16 : 8),
+//             decoration: BoxDecoration(
+//               gradient: LinearGradient(
+//                 colors: [Colors.indigo.shade700, Colors.blueAccent.shade400],
+//                 begin: Alignment.topLeft,
+//                 end: Alignment.bottomRight,
+//               ),
+//               borderRadius: const BorderRadius.only(
+//                   topRight: Radius.circular(16),
+//                   bottomRight: Radius.circular(0)),
+//             ),
+//             child: Row(
+//               mainAxisAlignment: isExpanded
+//                   ? MainAxisAlignment.spaceBetween
+//                   : MainAxisAlignment.center,
+//               children: [
+//                 if (isExpanded)
+//                   Row(
+//                     children: [
+//                       CircleAvatar(
+//                         radius: 20,
+//                         backgroundColor: Colors.white24,
+//                         child: Text(title[0],
+//                             style: const TextStyle(color: Colors.white)),
+//                       ),
+//                       const SizedBox(width: 12),
+//                       Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Text("Hello, $title!",
+//                               style: Theme.of(context)
+//                                   .textTheme
+//                                   .titleMedium
+//                                   ?.copyWith(
+//                                     color: Colors.white,
+//                                     fontWeight: FontWeight.bold,
+//                                   )),
+//                           const SizedBox(height: 4),
+//                           Text("Welcome back 👋",
+//                               style: Theme.of(context)
+//                                   .textTheme
+//                                   .bodySmall
+//                                   ?.copyWith(color: Colors.white70)),
+//                         ],
+//                       ),
+//                     ],
+//                   )
+//                 else
+//                   CircleAvatar(
+//                     radius: 18,
+//                     backgroundColor: Colors.white24,
+//                     child: Text(title[0],
+//                         style: const TextStyle(color: Colors.white)),
+//                   ),
+//                 IconButton(
+//                   icon: Icon(
+//                       isExpanded ? Icons.menu_open_rounded : Icons.menu_rounded,
+//                       color: Colors.white),
+//                   onPressed: onToggle,
+//                 ),
+//               ],
+//             ),
+//           ),
+
+//           // Minimal menu (replace with your actual menu items)
+//           Expanded(
+//             child: ListView(
+//               padding: const EdgeInsets.symmetric(vertical: 12),
+//               children: [
+//                 _menuTile(Icons.dashboard_rounded, "$title Dashboard",
+//                     '/${title.toLowerCase()}-dashboard'),
+//                 _menuTile(Icons.people_rounded, "$title Clients",
+//                     '/${title.toLowerCase()}-clients'),
+//                 _menuTile(Icons.notifications_rounded, "$title Notifications",
+//                     '/${title.toLowerCase()}-notifications'),
+//               ],
+//             ),
+//           ),
+
+//           const Divider(height: 1),
+//           Padding(
+//             padding: EdgeInsets.symmetric(
+//                 horizontal: isExpanded ? 8 : 4, vertical: 6),
+//             child: Column(
+//               children: [
+//                 ListTile(
+//                   leading: const Icon(Icons.settings_rounded,
+//                       color: Colors.blueAccent),
+//                   title: isExpanded
+//                       ? const Text("Settings",
+//                           style: TextStyle(fontWeight: FontWeight.bold))
+//                       : null,
+//                   onTap: () =>
+//                       onMenuItemTap('/${title.toLowerCase()}-settings'),
+//                 ),
+//                 ListTile(
+//                   leading:
+//                       const Icon(Icons.logout_rounded, color: Colors.redAccent),
+//                   title: isExpanded
+//                       ? const Text("Logout",
+//                           style: TextStyle(
+//                               fontWeight: FontWeight.bold,
+//                               color: Colors.redAccent))
+//                       : null,
+//                   onTap: () => onMenuItemTap('/login'),
+//                 ),
+//                 const SizedBox(height: 12),
+//               ],
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   Widget _menuTile(IconData icon, String label, String route) {
+//     return ListTile(
+//       leading: Icon(icon, color: Colors.grey.shade700),
+//       title: isExpanded
+//           ? Text(label, style: const TextStyle(fontWeight: FontWeight.w600))
+//           : null,
+//       onTap: () => onMenuItemTap(route),
+//     );
+//   }
+// }
+
+
+
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:real_estate_app/shared/app_side.dart';
+import 'package:real_estate_app/shared/header.dart';
+import 'package:real_estate_app/core/api_service.dart';
 import 'package:real_estate_app/client/client_sidebar.dart';
 import 'package:real_estate_app/marketer/marketer_sidebar.dart';
-import 'header.dart';
-import 'package:real_estate_app/core/api_service.dart';
 
 class AppLayout extends StatefulWidget {
   final Widget child;
@@ -23,37 +450,100 @@ class AppLayout extends StatefulWidget {
 }
 
 class _AppLayoutState extends State<AppLayout> {
+  static const _kClientCacheKey = 'cache_client_profile_v1';
+  static const _kMarketerCacheKey = 'cache_marketer_profile_v1';
+
   bool _isSidebarVisible = false;
 
-  
   Map<String, dynamic>? clientData;
-  bool _loadingClient = true;
+  bool _loadingClient = false;
+
+  Map<String, dynamic>? marketerData;
+  bool _loadingMarketer = false;
 
   @override
   void initState() {
     super.initState();
-    // _loadClientData();
+    _loadingClient = false;
+    _loadingMarketer = false;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadClientData();
+      _loadCachedThenRefresh();
     });
   }
 
-  Future<void> _loadClientData() async {
-    if (widget.side == AppSide.client) {
-      final api = ApiService();
-      final data = await api.getClientDetailByToken(
-        token: widget.token,
-      );
+  Future<void> _loadCachedThenRefresh() async {
+    final prefs = await SharedPreferences.getInstance();
 
-      setState(() {
-        clientData = data;
-        _loadingClient = false;
-      });
-    } else {
-      _loadingClient = false;
+    if (widget.side == AppSide.client) {
+      final cached = prefs.getString(_kClientCacheKey);
+      if (cached != null) {
+        try {
+          clientData = json.decode(cached) as Map<String, dynamic>;
+        } catch (_) {
+          clientData = null;
+        }
+        if (mounted) setState(() {});
+        _fetchClientAndCache();
+      } else {
+        if (mounted) setState(() => _loadingClient = true);
+        _fetchClientAndCache();
+      }
+    }
+
+    if (widget.side == AppSide.marketer) {
+      final cached = prefs.getString(_kMarketerCacheKey);
+      if (cached != null) {
+        try {
+          marketerData = json.decode(cached) as Map<String, dynamic>;
+        } catch (_) {
+          marketerData = null;
+        }
+        if (mounted) setState(() {});
+        _fetchMarketerAndCache();
+      } else {
+        if (mounted) setState(() => _loadingMarketer = true);
+        _fetchMarketerAndCache();
+      }
     }
   }
 
+  Future<void> _fetchClientAndCache() async {
+    final api = ApiService();
+    try {
+      final data = await api.getClientDetailByToken(token: widget.token).timeout(const Duration(seconds: 10));
+      if (data is Map<String, dynamic>) clientData = Map<String, dynamic>.from(data);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kClientCacheKey, json.encode(clientData));
+    } catch (e, st) {
+      debugPrint('Client refresh failed: $e\n$st');
+    } finally {
+      if (mounted) setState(() => _loadingClient = false);
+    }
+  }
+
+  Future<void> _fetchMarketerAndCache() async {
+    final api = ApiService();
+    try {
+      final data = await api.getMarketerProfileByToken(token: widget.token).timeout(const Duration(seconds: 10));
+      if (data is Map<String, dynamic>) marketerData = Map<String, dynamic>.from(data);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kMarketerCacheKey, json.encode(marketerData));
+    } catch (e, st) {
+      debugPrint('Marketer refresh failed: $e\n$st');
+    } finally {
+      if (mounted) setState(() => _loadingMarketer = false);
+    }
+  }
+
+  Future<void> refreshProfile() async {
+    if (widget.side == AppSide.client) {
+      if (mounted) setState(() => _loadingClient = true);
+      await _fetchClientAndCache();
+    } else if (widget.side == AppSide.marketer) {
+      if (mounted) setState(() => _loadingMarketer = true);
+      await _fetchMarketerAndCache();
+    }
+  }
 
   void toggleSidebar(AppSide side) {
     setState(() {
@@ -62,12 +552,11 @@ class _AppLayoutState extends State<AppLayout> {
   }
 
   void handleMenuItemTap(String route) {
-    // Hide overlay/sidebar when navigating
+    debugPrint('handleMenuItemTap -> $route');
     setState(() {
       _isSidebarVisible = false;
     });
 
-    // For routes that need a token, pass it as arguments.
     final tokenRequired = {
       '/admin-dashboard',
       '/admin-clients',
@@ -88,11 +577,9 @@ class _AppLayoutState extends State<AppLayout> {
     }
   }
 
-  /// Build the appropriate sidebar for the active side.
   Widget _buildSidebar({required bool isExpanded}) {
     switch (widget.side) {
       case AppSide.client:
-        // Client sidebar now shares the same API as AdminSidebar.
         return ClientSidebar(
           isExpanded: isExpanded,
           onMenuItemTap: handleMenuItemTap,
@@ -106,10 +593,11 @@ class _AppLayoutState extends State<AppLayout> {
           isExpanded: isExpanded,
           onMenuItemTap: handleMenuItemTap,
           onToggle: () => toggleSidebar(widget.side),
+          profileImageUrl: marketerData?['profile_image'],
+          marketerName: marketerData?['full_name'] ?? "Marketer",
         );
 
       case AppSide.admin:
-        // TODO: Replace PlaceholderSidebar with your AdminSidebar when available.
         return PlaceholderSidebar(
           title: 'Admin',
           isExpanded: isExpanded,
@@ -121,10 +609,9 @@ class _AppLayoutState extends State<AppLayout> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loadingClient) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+    if ((widget.side == AppSide.client && _loadingClient) ||
+        (widget.side == AppSide.marketer && _loadingMarketer)) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final screenWidth = MediaQuery.of(context).size.width;
@@ -138,41 +625,24 @@ class _AppLayoutState extends State<AppLayout> {
       ),
       body: Row(
         children: [
-          // Persistent sidebar on large screens
           if (isLargeScreen)
-            SizedBox(
-              width: 250,
-              child: _buildSidebar(isExpanded: true),
-            ),
-
-          // Main content area (and overlay sidebar on mobile)
+            SizedBox(width: 250, child: _buildSidebar(isExpanded: true)),
           Expanded(
             child: Stack(
               children: [
-                // Background + content
                 Container(
                   decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Colors.white, Color(0xFFF5F3FF)],
-                    ),
+                    gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.white, Color(0xFFF5F3FF)]),
                   ),
                   child: widget.child,
                 ),
-
-                // Slide-in sidebar for small screens
                 if (!isLargeScreen)
                   AnimatedPositioned(
                     duration: const Duration(milliseconds: 300),
                     left: _isSidebarVisible ? 0 : -250,
                     top: 0,
                     bottom: 0,
-                    child: SizedBox(
-                      width: 250,
-                      // when overlaying on mobile we show expanded content for clarity
-                      child: _buildSidebar(isExpanded: true),
-                    ),
+                    child: SizedBox(width: 250, child: _buildSidebar(isExpanded: true)),
                   ),
               ],
             ),
@@ -183,8 +653,7 @@ class _AppLayoutState extends State<AppLayout> {
   }
 }
 
-/// Simple placeholder sidebar widget that mirrors Admin/Client sidebar API.
-/// Useful until you wire the marketer/admin implementations.
+/// PlaceholderSidebar unchanged — reuse your existing placeholder code or keep below.
 class PlaceholderSidebar extends StatelessWidget {
   final bool isExpanded;
   final ValueChanged<String> onMenuItemTap;
@@ -208,123 +677,51 @@ class PlaceholderSidebar extends StatelessWidget {
       width: width,
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 18,
-            offset: const Offset(4, 6),
-          )
-        ],
-        borderRadius: const BorderRadius.only(
-            topRight: Radius.circular(16), bottomRight: Radius.circular(16)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 18, offset: const Offset(4, 6))],
+        borderRadius: const BorderRadius.only(topRight: Radius.circular(16), bottomRight: Radius.circular(16)),
       ),
       child: Column(
         children: [
-          // Header
           Container(
-            padding: EdgeInsets.symmetric(
-                vertical: 20, horizontal: isExpanded ? 16 : 8),
+            padding: EdgeInsets.symmetric(vertical: 20, horizontal: isExpanded ? 16 : 8),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.indigo.shade700, Colors.blueAccent.shade400],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(16),
-                  bottomRight: Radius.circular(0)),
+              gradient: LinearGradient(colors: [Colors.indigo.shade700, Colors.blueAccent.shade400], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              borderRadius: const BorderRadius.only(topRight: Radius.circular(16), bottomRight: Radius.circular(0)),
             ),
             child: Row(
-              mainAxisAlignment: isExpanded
-                  ? MainAxisAlignment.spaceBetween
-                  : MainAxisAlignment.center,
+              mainAxisAlignment: isExpanded ? MainAxisAlignment.spaceBetween : MainAxisAlignment.center,
               children: [
                 if (isExpanded)
                   Row(
                     children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: Colors.white24,
-                        child: Text(title[0],
-                            style: const TextStyle(color: Colors.white)),
-                      ),
+                      CircleAvatar(radius: 20, backgroundColor: Colors.white24, child: Text(title[0], style: const TextStyle(color: Colors.white))),
                       const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("Hello, $title!",
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  )),
-                          const SizedBox(height: 4),
-                          Text("Welcome back 👋",
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(color: Colors.white70)),
-                        ],
-                      ),
+                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text("Hello, $title!", style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Text("Welcome back 👋", style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70)),
+                      ]),
                     ],
                   )
                 else
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Colors.white24,
-                    child: Text(title[0],
-                        style: const TextStyle(color: Colors.white)),
-                  ),
-                IconButton(
-                  icon: Icon(
-                      isExpanded ? Icons.menu_open_rounded : Icons.menu_rounded,
-                      color: Colors.white),
-                  onPressed: onToggle,
-                ),
+                  CircleAvatar(radius: 18, backgroundColor: Colors.white24, child: Text(title[0], style: const TextStyle(color: Colors.white))),
+                IconButton(icon: Icon(isExpanded ? Icons.menu_open_rounded : Icons.menu_rounded, color: Colors.white), onPressed: onToggle),
               ],
             ),
           ),
-
-          // Minimal menu (replace with your actual menu items)
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              children: [
-                _menuTile(Icons.dashboard_rounded, "$title Dashboard",
-                    '/${title.toLowerCase()}-dashboard'),
-                _menuTile(Icons.people_rounded, "$title Clients",
-                    '/${title.toLowerCase()}-clients'),
-                _menuTile(Icons.notifications_rounded, "$title Notifications",
-                    '/${title.toLowerCase()}-notifications'),
-              ],
-            ),
-          ),
-
+          Expanded(child: ListView(padding: const EdgeInsets.symmetric(vertical: 12), children: [
+            _menuTile(Icons.dashboard_rounded, "$title Dashboard", '/${title.toLowerCase()}-dashboard'),
+            _menuTile(Icons.people_rounded, "$title Clients", '/${title.toLowerCase()}-clients'),
+            _menuTile(Icons.notifications_rounded, "$title Notifications", '/${title.toLowerCase()}-notifications'),
+          ])),
           const Divider(height: 1),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: isExpanded ? 8 : 4, vertical: 6),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.settings_rounded, color: Colors.blueAccent),
-                  title: isExpanded
-                      ? const Text("Settings", style: TextStyle(fontWeight: FontWeight.bold))
-                      : null,
-                  onTap: () => onMenuItemTap('/${title.toLowerCase()}-settings'),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-                  title: isExpanded
-                      ? const Text("Logout",
-                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent))
-                      : null,
-                  onTap: () => onMenuItemTap('/login'),
-                ),
-                const SizedBox(height: 12),
-              ],
-            ),
+            child: Column(children: [
+              ListTile(leading: const Icon(Icons.settings_rounded, color: Colors.blueAccent), title: isExpanded ? const Text("Settings", style: TextStyle(fontWeight: FontWeight.bold)) : null, onTap: () => onMenuItemTap('/${title.toLowerCase()}-settings')),
+              ListTile(leading: const Icon(Icons.logout_rounded, color: Colors.redAccent), title: isExpanded ? const Text("Logout", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent)) : null, onTap: () => onMenuItemTap('/login')),
+              const SizedBox(height: 12),
+            ]),
           ),
         ],
       ),
@@ -332,10 +729,6 @@ class PlaceholderSidebar extends StatelessWidget {
   }
 
   Widget _menuTile(IconData icon, String label, String route) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.grey.shade700),
-      title: isExpanded ? Text(label, style: const TextStyle(fontWeight: FontWeight.w600)) : null,
-      onTap: () => onMenuItemTap(route),
-    );
+    return ListTile(leading: Icon(icon, color: Colors.grey.shade700), title: isExpanded ? Text(label, style: const TextStyle(fontWeight: FontWeight.w600)) : null, onTap: () => onMenuItemTap(route));
   }
 }

@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:real_estate_app/core/api_service.dart';
 import 'package:real_estate_app/shared/app_layout.dart';
 import 'package:real_estate_app/client/client_bottom_nav.dart';
-import 'package:real_estate_app/shared/header.dart';
+import 'package:real_estate_app/shared/app_side.dart';
 
 class ClientNotification extends StatefulWidget {
   final String token;

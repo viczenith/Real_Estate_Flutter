@@ -10,7 +10,7 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:real_estate_app/core/api_service.dart';
 import 'package:real_estate_app/shared/app_layout.dart';
 import 'package:real_estate_app/client/client_bottom_nav.dart';
-import 'package:real_estate_app/shared/header.dart';
+import 'package:real_estate_app/shared/app_side.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ClientProfile extends StatefulWidget {

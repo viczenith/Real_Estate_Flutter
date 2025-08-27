@@ -1,273 +1,5 @@
-// import 'package:flutter/material.dart';
-// import 'package:real_estate_app/shared/app_side.dart';
-// import 'package:syncfusion_flutter_charts/charts.dart';
-// import 'package:real_estate_app/shared/app_layout.dart';
-// import 'package:real_estate_app/client/client_bottom_nav.dart';
-
-// class ChartData {
-//   final String time;
-//   final double sales;
-//   final double revenue;
-//   final double customers;
-
-//   ChartData({
-//     required this.time,
-//     required this.sales,
-//     required this.revenue,
-//     required this.customers,
-//   });
-// }
-
-// class ClientDashboard extends StatefulWidget {
-//   final String token;
-//   const ClientDashboard({required this.token, super.key});
-
-//   @override
-//   _ClientDashboardState createState() => _ClientDashboardState();
-// }
-
-// class _ClientDashboardState extends State<ClientDashboard> {
-//   // Sample data for Syncfusion chart
-//   final List<ChartData> salesData = [
-//     ChartData(time: '00:00', sales: 40, revenue: 50, customers: 30),
-//     ChartData(time: '03:00', sales: 55, revenue: 60, customers: 20),
-//     ChartData(time: '06:00', sales: 35, revenue: 40, customers: 50),
-//     ChartData(time: '09:00', sales: 60, revenue: 70, customers: 40),
-//     ChartData(time: '12:00', sales: 45, revenue: 65, customers: 60),
-//     ChartData(time: '15:00', sales: 70, revenue: 85, customers: 50),
-//     ChartData(time: '18:00', sales: 55, revenue: 60, customers: 70),
-//     ChartData(time: '21:00', sales: 80, revenue: 90, customers: 65),
-//   ];
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return AppLayout(
-//       pageTitle: 'Client Dashboard',
-//       token: widget.token,
-//       side: AppSide.client,
-//       child: Scaffold(
-//         backgroundColor: const Color(0xFFF7F7F7),
-//         // Attach the beautiful bottom nav here
-//         bottomNavigationBar: ClientBottomNav(
-//           currentIndex: 0,
-//           token: widget.token,
-//           chatBadge: 1,
-//         ),
-//         body: SafeArea(
-//           child: SingleChildScrollView(
-//             padding: const EdgeInsets.all(20),
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 const SizedBox(height: 6),
-//                 Text(
-//                   "Client Dashboard",
-//                   style: TextStyle(
-//                       fontSize: 26,
-//                       fontWeight: FontWeight.bold,
-//                       color: Colors.black87),
-//                 ),
-//                 const SizedBox(height: 5),
-//                 Text("Home / Dashboard", style: TextStyle(color: Colors.grey)),
-//                 const SizedBox(height: 20),
-
-//                 // Summary Cards
-//                 Row(
-//                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                   children: [
-//                     dashboardCard(
-//                         Icons.home, "Properties Purchased", "7", Colors.blue),
-//                     dashboardCard(Icons.assignment_turned_in,
-//                         "Fully Paid & Allocated", "5", Colors.green),
-//                     dashboardCard(Icons.pending_actions, "Not Fully Paid", "2",
-//                         Colors.orange),
-//                   ],
-//                 ),
-
-//                 const SizedBox(height: 25),
-//                 Text("Property Value Chart",
-//                     style:
-//                         TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-//                 const SizedBox(height: 10),
-
-//                 // Syncfusion Multi-Line Chart
-//                 buildSyncfusionChart(),
-
-//                 const SizedBox(height: 25),
-//                 Text("News & Update",
-//                     style:
-//                         TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-//                 const SizedBox(height: 10),
-
-//                 // News items
-//                 buildNewsItem(
-//                   image: "assets/logo.png",
-//                   heading: "Nihil blanditiis at in nihil autem",
-//                   body:
-//                       "Itaque suscipit suscipit recusandae harum perspiciatis. Quia enim eligendi sed ut harum explicabo delectus?",
-//                   time: "2 hrs ago",
-//                 ),
-//                 buildNewsItem(
-//                   image: "assets/logo.png",
-//                   heading: "Quidem autem et impedit",
-//                   body:
-//                       "Illo nemo neque maiores vitae officiis cum eum. Rerum deleniti dicta doloribus temporibus asperiores.",
-//                   time: "5 hrs ago",
-//                 ),
-//                 buildNewsItem(
-//                   image: "assets/logo.png",
-//                   heading: "Id quia et et maxime similique coaccati",
-//                   body:
-//                       "Fugiat esse fugit illum vero beatae suscipit accusamus. Odit ipsam aspernatur reiciendis.",
-//                   time: "8 hrs ago",
-//                 ),
-//                 const SizedBox(height: 40),
-//               ],
-//             ),
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-
-//   // Dashboard Card Widget
-//   Widget dashboardCard(IconData icon, String title, String value, Color color) {
-//     return Expanded(
-//       child: Container(
-//         margin: const EdgeInsets.all(8),
-//         padding: const EdgeInsets.all(18),
-//         decoration: BoxDecoration(
-//           color: const Color(0xFFF1F1F1),
-//           borderRadius: BorderRadius.circular(15),
-//           boxShadow: [
-//             BoxShadow(
-//               color: Colors.black.withOpacity(0.15),
-//               offset: const Offset(0, 4),
-//               blurRadius: 6,
-//             )
-//           ],
-//         ),
-//         child: Column(
-//           children: [
-//             Icon(icon, size: 40, color: color),
-//             const SizedBox(height: 10),
-//             Text(value,
-//                 style: TextStyle(
-//                     fontSize: 24, fontWeight: FontWeight.bold, color: color)),
-//             const SizedBox(height: 5),
-//             Text(title,
-//                 textAlign: TextAlign.center,
-//                 style: TextStyle(
-//                     color: Colors.black87, fontWeight: FontWeight.w600)),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-
-//   // Syncfusion Multi-Line Chart Widget
-//   Widget buildSyncfusionChart() {
-//     return Container(
-//       height: 300,
-//       decoration: BoxDecoration(
-//         color: Colors.white,
-//         borderRadius: BorderRadius.circular(15),
-//         boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
-//       ),
-//       padding: const EdgeInsets.all(15),
-//       child: SfCartesianChart(
-//         legend: Legend(isVisible: true),
-//         tooltipBehavior: TooltipBehavior(enable: true),
-//         primaryXAxis: CategoryAxis(),
-//         primaryYAxis: NumericAxis(minimum: 0, maximum: 100, interval: 20),
-//         series: <ChartSeries>[
-//           // Sales Series
-//           LineSeries<ChartData, String>(
-//             name: "Sales",
-//             dataSource: salesData,
-//             xValueMapper: (ChartData data, _) => data.time,
-//             yValueMapper: (ChartData data, _) => data.sales,
-//             markerSettings: const MarkerSettings(isVisible: true),
-//           ),
-//           // Revenue Series
-//           LineSeries<ChartData, String>(
-//             name: "Revenue",
-//             dataSource: salesData,
-//             xValueMapper: (ChartData data, _) => data.time,
-//             yValueMapper: (ChartData data, _) => data.revenue,
-//             markerSettings: const MarkerSettings(isVisible: true),
-//           ),
-//           // Customers Series
-//           LineSeries<ChartData, String>(
-//             name: "Customers",
-//             dataSource: salesData,
-//             xValueMapper: (ChartData data, _) => data.time,
-//             yValueMapper: (ChartData data, _) => data.customers,
-//             markerSettings: const MarkerSettings(isVisible: true),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-
-//   // News Item Widget
-//   Widget buildNewsItem({
-//     required String image,
-//     required String heading,
-//     required String body,
-//     required String time,
-//   }) {
-//     return InkWell(
-//       onTap: () {},
-//       child: Container(
-//         margin: const EdgeInsets.only(bottom: 12),
-//         padding: const EdgeInsets.all(12),
-//         decoration: BoxDecoration(
-//           color: Colors.white,
-//           borderRadius: BorderRadius.circular(15),
-//           boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
-//         ),
-//         child: Row(
-//           children: [
-//             // Thumbnail Image
-//             ClipRRect(
-//               borderRadius: BorderRadius.circular(8),
-//               child:
-//                   Image.asset(image, width: 70, height: 70, fit: BoxFit.cover),
-//             ),
-//             const SizedBox(width: 12),
-//             // News Text
-//             Expanded(
-//               child: Column(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   Text(heading,
-//                       style: TextStyle(
-//                           fontSize: 16,
-//                           fontWeight: FontWeight.bold,
-//                           color: Colors.black87)),
-//                   const SizedBox(height: 5),
-//                   Text(
-//                     body,
-//                     style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-//                     maxLines: 2,
-//                     overflow: TextOverflow.ellipsis,
-//                   ),
-//                   const SizedBox(height: 8),
-//                   Text(time,
-//                       style: TextStyle(fontSize: 12, color: Colors.grey)),
-//                 ],
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
 import 'dart:async';
-import 'dart:math';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -332,7 +64,7 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
   // Start auto carousel for promotions
   void _startPromoCarousel() {
     _promoCarouselTimer?.cancel();
-    _promoCarouselTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+    _promoCarouselTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       if (_activePromos.isEmpty) return;
       
       int nextPage = _currentPromoIndex + 1;
@@ -381,7 +113,7 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
     if (_promoOnly) cards = cards.where((c) => c['promo'] != null).toList();
     if (q.isNotEmpty) {
       cards = cards.where((c) {
-        final estate = (c['price']?['estate_name'] ?? '').toString().toLowerCase();
+        final estate = (c['price']?['estate_name'] ?? c['estate_name'] ?? '').toString().toLowerCase();
         final size = (c['plot_unit']?['size'] ?? '').toString().toLowerCase();
         return estate.contains(q) || size.contains(q);
       }).toList();
@@ -416,6 +148,26 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
       final numVal = (v is num) ? v : double.tryParse(v.toString()) ?? 0;
       return _ngnFmt.format(numVal);
     } catch (e) { return v.toString(); }
+  }
+
+  // Check if a date is in the future
+  bool _isFutureDate(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      return date.isAfter(DateTime.now());
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Format date to display as "MMM dd, yyyy"
+  String _formatDateDisplay(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      return DateFormat('MMM dd, yyyy').format(date);
+    } catch (e) {
+      return dateString;
+    }
   }
 
   Future<void> _openPromoDetail(Map<String, dynamic> promo) async {
@@ -787,26 +539,11 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
                     childAspectRatio: 1.0,
-                    mainAxisExtent: 200
+                    mainAxisExtent: 220
                   ),
                   itemBuilder: (ctx, i) {
                     final c = cards[i];
-                    final promo = c['promo'];
-                    final percent = c['percent_change'];
-                    final up = (percent ?? 0) >= 0;
-                    
-                    return Opacity(
-                      opacity: 1.0, // Removed the opacity animation that was causing issues
-                      child: ScaleTransition(
-                        scale: Tween<double>(begin: 0.9, end: 1.0).animate(
-                          CurvedAnimation(
-                            parent: _staggerController,
-                            curve: Interval(0.1 * i, 1.0, curve: Curves.easeOutBack)
-                          )
-                        ),
-                        child: _buildPriceCard(c, promo, up, percent),
-                      ),
-                    );
+                    return _buildPriceCard(c);
                   },
                 ),
               );
@@ -818,7 +555,15 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
     );
   }
 
-  Widget _buildPriceCard(Map<String, dynamic> c, dynamic promo, bool up, dynamic percent) {
+  Widget _buildPriceCard(Map<String, dynamic> c) {
+    final promo = c['promo'];
+    final percent = c['percent_change'];
+    final up = (percent ?? 0) >= 0;
+    final estateName = c['price']?['estate_name'] ?? c['estate_name'] ?? '-';
+    final plotSize = c['plot_unit']?['size'] ?? '-';
+    final effectiveDate = c['effective']?.toString() ?? '';
+    final isFutureDate = _isFutureDate(effectiveDate);
+    
     return Material(
       elevation: 4,
       borderRadius: BorderRadius.circular(16),
@@ -848,6 +593,7 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Estate name and size
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -856,44 +602,54 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          c['price']?['estate_name'] ?? '-',
+                          estateName,
                           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          c['plot_unit']?['size'] ?? '-',
+                          plotSize,
                           style: const TextStyle(color: Colors.grey, fontSize: 14),
                         )
                       ],
                     ),
                   ),
                   if (promo != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xffff7a7a), Color(0xffffb46b)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight
+                    Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xffff7a7a), Color(0xffffb46b)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '-${promo['discount']}% Off',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10
+                            ),
+                          ),
                         ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'PROMO -${promo['discount']}%',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10
-                        ),
-                      ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Promo',
+                          style: TextStyle(fontSize: 10, color: Colors.grey),
+                        )
+                      ],
                     )
                 ],
               ),
 
               const SizedBox(height: 12),
 
+              // Prices
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -937,39 +693,58 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: up ? Colors.green.shade100 : Colors.red.shade100,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: up ? Colors.green : Colors.red,
-                            width: 1
-                          )
-                        ),
-                        child: Text(
-                          '${(percent ?? 0).toStringAsFixed(1)}%',
-                          style: TextStyle(
-                            color: up ? Colors.green.shade800 : Colors.red.shade800,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14
+                      // Percentage change
+                      if (percent != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: up ? Colors.green.shade100 : Colors.red.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: up ? Colors.green : Colors.red,
+                              width: 1
+                            )
+                          ),
+                          child: Text(
+                            '${percent.toStringAsFixed(1)}%',
+                            style: TextStyle(
+                              color: up ? Colors.green.shade800 : Colors.red.shade800,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14
+                            ),
                           ),
                         ),
-                      ),
+                      
                       const SizedBox(height: 8),
+                      
+                      // Effective date badge
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
+                          color: isFutureDate ? const Color(0xFFecffd9) : const Color(0xFFf5f5f6),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isFutureDate ? const Color(0xFF0b6b2e).withOpacity(0.08) : const Color(0xFF495057).withOpacity(0.06),
+                          )
                         ),
-                        child: Text(
-                          c['effective'] ?? '-',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.blue.shade800,
-                            fontWeight: FontWeight.w600
-                          ),
+                        child: Column(
+                          children: [
+                            Text(
+                              isFutureDate ? 'Effective on' : 'Effective since',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isFutureDate ? const Color(0xFF0b6b2e) : const Color(0xFF495057),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              _formatDateDisplay(effectiveDate),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isFutureDate ? const Color(0xFF0b6b2e) : const Color(0xFF495057),
+                              ),
+                            ),
+                          ],
                         ),
                       )
                     ],
@@ -979,6 +754,7 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
               
               const SizedBox(height: 12),
               
+              // Notes if available
               if (c['notes'] != null && c['notes'].toString().isNotEmpty)
                 Text(
                   c['notes'].toString(),
@@ -989,7 +765,19 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
                     color: Colors.grey,
                     fontStyle: FontStyle.italic
                   ),
-                )
+                ),
+              
+              // View button at bottom
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => _openPriceDetail((c['id'] as num).toInt()),
+                  child: const Text(
+                    'View Details',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+              )
             ],
           ),
         ),
@@ -1043,17 +831,17 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
                       scale: Tween<double>(begin: 0.96, end: 1.04).animate(
                         CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut)
                       ),
-                      child: ElevatedButton.icon(
-                        onPressed: _fetchDashboard,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Refresh'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
+                      // child: ElevatedButton.icon(
+                      //   onPressed: _fetchDashboard,
+                      //   icon: const Icon(Icons.refresh),
+                      //   label: const Text('Refresh'),
+                      //   style: ElevatedButton.styleFrom(
+                      //     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      //     backgroundColor: Theme.of(context).colorScheme.primary,
+                      //     foregroundColor: Colors.white,
+                      //   ),
+                      // ),
                     )
                   ]),
                 ),

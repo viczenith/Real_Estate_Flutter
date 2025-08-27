@@ -1,3 +1,271 @@
+// import 'package:flutter/material.dart';
+// import 'package:real_estate_app/shared/app_side.dart';
+// import 'package:syncfusion_flutter_charts/charts.dart';
+// import 'package:real_estate_app/shared/app_layout.dart';
+// import 'package:real_estate_app/client/client_bottom_nav.dart';
+
+// class ChartData {
+//   final String time;
+//   final double sales;
+//   final double revenue;
+//   final double customers;
+
+//   ChartData({
+//     required this.time,
+//     required this.sales,
+//     required this.revenue,
+//     required this.customers,
+//   });
+// }
+
+// class ClientDashboard extends StatefulWidget {
+//   final String token;
+//   const ClientDashboard({required this.token, super.key});
+
+//   @override
+//   _ClientDashboardState createState() => _ClientDashboardState();
+// }
+
+// class _ClientDashboardState extends State<ClientDashboard> {
+//   // Sample data for Syncfusion chart
+//   final List<ChartData> salesData = [
+//     ChartData(time: '00:00', sales: 40, revenue: 50, customers: 30),
+//     ChartData(time: '03:00', sales: 55, revenue: 60, customers: 20),
+//     ChartData(time: '06:00', sales: 35, revenue: 40, customers: 50),
+//     ChartData(time: '09:00', sales: 60, revenue: 70, customers: 40),
+//     ChartData(time: '12:00', sales: 45, revenue: 65, customers: 60),
+//     ChartData(time: '15:00', sales: 70, revenue: 85, customers: 50),
+//     ChartData(time: '18:00', sales: 55, revenue: 60, customers: 70),
+//     ChartData(time: '21:00', sales: 80, revenue: 90, customers: 65),
+//   ];
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return AppLayout(
+//       pageTitle: 'Client Dashboard',
+//       token: widget.token,
+//       side: AppSide.client,
+//       child: Scaffold(
+//         backgroundColor: const Color(0xFFF7F7F7),
+//         // Attach the beautiful bottom nav here
+//         bottomNavigationBar: ClientBottomNav(
+//           currentIndex: 0,
+//           token: widget.token,
+//           chatBadge: 1,
+//         ),
+//         body: SafeArea(
+//           child: SingleChildScrollView(
+//             padding: const EdgeInsets.all(20),
+//             child: Column(
+//               crossAxisAlignment: CrossAxisAlignment.start,
+//               children: [
+//                 const SizedBox(height: 6),
+//                 Text(
+//                   "Client Dashboard",
+//                   style: TextStyle(
+//                       fontSize: 26,
+//                       fontWeight: FontWeight.bold,
+//                       color: Colors.black87),
+//                 ),
+//                 const SizedBox(height: 5),
+//                 Text("Home / Dashboard", style: TextStyle(color: Colors.grey)),
+//                 const SizedBox(height: 20),
+
+//                 // Summary Cards
+//                 Row(
+//                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                   children: [
+//                     dashboardCard(
+//                         Icons.home, "Properties Purchased", "7", Colors.blue),
+//                     dashboardCard(Icons.assignment_turned_in,
+//                         "Fully Paid & Allocated", "5", Colors.green),
+//                     dashboardCard(Icons.pending_actions, "Not Fully Paid", "2",
+//                         Colors.orange),
+//                   ],
+//                 ),
+
+//                 const SizedBox(height: 25),
+//                 Text("Property Value Chart",
+//                     style:
+//                         TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+//                 const SizedBox(height: 10),
+
+//                 // Syncfusion Multi-Line Chart
+//                 buildSyncfusionChart(),
+
+//                 const SizedBox(height: 25),
+//                 Text("News & Update",
+//                     style:
+//                         TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+//                 const SizedBox(height: 10),
+
+//                 // News items
+//                 buildNewsItem(
+//                   image: "assets/logo.png",
+//                   heading: "Nihil blanditiis at in nihil autem",
+//                   body:
+//                       "Itaque suscipit suscipit recusandae harum perspiciatis. Quia enim eligendi sed ut harum explicabo delectus?",
+//                   time: "2 hrs ago",
+//                 ),
+//                 buildNewsItem(
+//                   image: "assets/logo.png",
+//                   heading: "Quidem autem et impedit",
+//                   body:
+//                       "Illo nemo neque maiores vitae officiis cum eum. Rerum deleniti dicta doloribus temporibus asperiores.",
+//                   time: "5 hrs ago",
+//                 ),
+//                 buildNewsItem(
+//                   image: "assets/logo.png",
+//                   heading: "Id quia et et maxime similique coaccati",
+//                   body:
+//                       "Fugiat esse fugit illum vero beatae suscipit accusamus. Odit ipsam aspernatur reiciendis.",
+//                   time: "8 hrs ago",
+//                 ),
+//                 const SizedBox(height: 40),
+//               ],
+//             ),
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+
+//   // Dashboard Card Widget
+//   Widget dashboardCard(IconData icon, String title, String value, Color color) {
+//     return Expanded(
+//       child: Container(
+//         margin: const EdgeInsets.all(8),
+//         padding: const EdgeInsets.all(18),
+//         decoration: BoxDecoration(
+//           color: const Color(0xFFF1F1F1),
+//           borderRadius: BorderRadius.circular(15),
+//           boxShadow: [
+//             BoxShadow(
+//               color: Colors.black.withOpacity(0.15),
+//               offset: const Offset(0, 4),
+//               blurRadius: 6,
+//             )
+//           ],
+//         ),
+//         child: Column(
+//           children: [
+//             Icon(icon, size: 40, color: color),
+//             const SizedBox(height: 10),
+//             Text(value,
+//                 style: TextStyle(
+//                     fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+//             const SizedBox(height: 5),
+//             Text(title,
+//                 textAlign: TextAlign.center,
+//                 style: TextStyle(
+//                     color: Colors.black87, fontWeight: FontWeight.w600)),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   // Syncfusion Multi-Line Chart Widget
+//   Widget buildSyncfusionChart() {
+//     return Container(
+//       height: 300,
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(15),
+//         boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+//       ),
+//       padding: const EdgeInsets.all(15),
+//       child: SfCartesianChart(
+//         legend: Legend(isVisible: true),
+//         tooltipBehavior: TooltipBehavior(enable: true),
+//         primaryXAxis: CategoryAxis(),
+//         primaryYAxis: NumericAxis(minimum: 0, maximum: 100, interval: 20),
+//         series: <ChartSeries>[
+//           // Sales Series
+//           LineSeries<ChartData, String>(
+//             name: "Sales",
+//             dataSource: salesData,
+//             xValueMapper: (ChartData data, _) => data.time,
+//             yValueMapper: (ChartData data, _) => data.sales,
+//             markerSettings: const MarkerSettings(isVisible: true),
+//           ),
+//           // Revenue Series
+//           LineSeries<ChartData, String>(
+//             name: "Revenue",
+//             dataSource: salesData,
+//             xValueMapper: (ChartData data, _) => data.time,
+//             yValueMapper: (ChartData data, _) => data.revenue,
+//             markerSettings: const MarkerSettings(isVisible: true),
+//           ),
+//           // Customers Series
+//           LineSeries<ChartData, String>(
+//             name: "Customers",
+//             dataSource: salesData,
+//             xValueMapper: (ChartData data, _) => data.time,
+//             yValueMapper: (ChartData data, _) => data.customers,
+//             markerSettings: const MarkerSettings(isVisible: true),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   // News Item Widget
+//   Widget buildNewsItem({
+//     required String image,
+//     required String heading,
+//     required String body,
+//     required String time,
+//   }) {
+//     return InkWell(
+//       onTap: () {},
+//       child: Container(
+//         margin: const EdgeInsets.only(bottom: 12),
+//         padding: const EdgeInsets.all(12),
+//         decoration: BoxDecoration(
+//           color: Colors.white,
+//           borderRadius: BorderRadius.circular(15),
+//           boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+//         ),
+//         child: Row(
+//           children: [
+//             // Thumbnail Image
+//             ClipRRect(
+//               borderRadius: BorderRadius.circular(8),
+//               child:
+//                   Image.asset(image, width: 70, height: 70, fit: BoxFit.cover),
+//             ),
+//             const SizedBox(width: 12),
+//             // News Text
+//             Expanded(
+//               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   Text(heading,
+//                       style: TextStyle(
+//                           fontSize: 16,
+//                           fontWeight: FontWeight.bold,
+//                           color: Colors.black87)),
+//                   const SizedBox(height: 5),
+//                   Text(
+//                     body,
+//                     style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+//                     maxLines: 2,
+//                     overflow: TextOverflow.ellipsis,
+//                   ),
+//                   const SizedBox(height: 8),
+//                   Text(time,
+//                       style: TextStyle(fontSize: 12, color: Colors.grey)),
+//                 ],
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
 import 'dart:async';
 import 'dart:math';
 
@@ -7,17 +275,6 @@ import 'package:real_estate_app/client/client_bottom_nav.dart';
 import 'package:real_estate_app/shared/app_layout.dart';
 import 'package:real_estate_app/shared/app_side.dart';
 import 'package:real_estate_app/core/api_service.dart';
-
-// Top-level currency formatter function
-String formatNGN(dynamic v) {
-  if (v == null) return '—';
-  try {
-    final numVal = (v is num) ? v : double.tryParse(v.toString()) ?? 0;
-    return NumberFormat.currency(locale: 'en_NG', symbol: '₦', decimalDigits: 0).format(numVal);
-  } catch (e) {
-    return v.toString();
-  }
-}
 
 class ClientDashboard extends StatefulWidget {
   final String token;
@@ -42,14 +299,16 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
   String _priceSort = 'newest';
   bool _promoOnly = false;
 
-  // Promotions carousel auto-scroll
-  late PageController _promoPageController;
-  late Timer _promoCarouselTimer;
-  int _currentPromoPage = 0;
-
   late final AnimationController _staggerController;
   late final Animation<double> _staggerAnim;
   late final AnimationController _pulseController;
+
+  // Auto carousel for promotions
+  Timer? _promoCarouselTimer;
+  final PageController _promoPageController = PageController(viewportFraction: 0.92);
+  int _currentPromoIndex = 0;
+
+  final NumberFormat _ngnFmt = NumberFormat.currency(locale: 'en_NG', symbol: '₦', decimalDigits: 0);
 
   @override
   void initState() {
@@ -57,32 +316,7 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
     _staggerController = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
     _staggerAnim = CurvedAnimation(parent: _staggerController, curve: Curves.easeOutCubic);
     _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
-    
-    // Initialize promo carousel
-    _promoPageController = PageController(viewportFraction: 0.92);
-    _startPromoCarouselTimer();
-    
     _fetchDashboard();
-  }
-
-  void _startPromoCarouselTimer() {
-    _promoCarouselTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (_activePromos.isEmpty) return;
-      
-      final nextPage = _currentPromoPage + 1;
-      if (nextPage >= _activePromos.length) {
-        _promoPageController.animateToPage(
-          0,
-          duration: const Duration(milliseconds: 800),
-          curve: Curves.easeInOut,
-        );
-      } else {
-        _promoPageController.nextPage(
-          duration: const Duration(milliseconds: 800),
-          curve: Curves.easeInOut,
-        );
-      }
-    });
   }
 
   @override
@@ -91,20 +325,47 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
     _staggerController.dispose();
     _pulseController.dispose();
     _promoPageController.dispose();
-    _promoCarouselTimer.cancel();
+    _promoCarouselTimer?.cancel();
     super.dispose();
+  }
+
+  // Start auto carousel for promotions
+  void _startPromoCarousel() {
+    _promoCarouselTimer?.cancel();
+    _promoCarouselTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (_activePromos.isEmpty) return;
+      
+      int nextPage = _currentPromoIndex + 1;
+      if (nextPage >= _activePromos.length) {
+        nextPage = 0;
+      }
+      
+      if (_promoPageController.hasClients) {
+        _promoPageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
   }
 
   Future<void> _fetchDashboard() async {
     setState(() { _loading = true; _error = null; });
     try {
       final resp = await _api.getClientDashboardData(widget.token);
+      // expected keys: total_properties, fully_paid_allocations, not_fully_paid_allocations, active_promotions, latest_value
       setState(() {
         _data = resp;
         _activePromos = List<Map<String, dynamic>>.from(resp['active_promotions'] ?? []);
         _latestValue = List<Map<String, dynamic>>.from(resp['latest_value'] ?? []);
       });
       _staggerController.forward();
+      
+      // Start the carousel after data is loaded
+      if (_activePromos.isNotEmpty) {
+        _startPromoCarousel();
+      }
     } catch (e) {
       setState(() { _error = e.toString(); });
     } finally {
@@ -147,6 +408,14 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
     });
 
     return cards;
+  }
+
+  String _formatNGN(dynamic v) {
+    if (v == null) return '—';
+    try {
+      final numVal = (v is num) ? v : double.tryParse(v.toString()) ?? 0;
+      return _ngnFmt.format(numVal);
+    } catch (e) { return v.toString(); }
   }
 
   Future<void> _openPromoDetail(Map<String, dynamic> promo) async {
@@ -265,9 +534,9 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
       height: 200,
       child: PageView.builder(
         controller: _promoPageController,
-        onPageChanged: (int page) {
+        onPageChanged: (index) {
           setState(() {
-            _currentPromoPage = page;
+            _currentPromoIndex = index;
           });
         },
         itemCount: _activePromos.length,
@@ -501,7 +770,7 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
 
         const SizedBox(height: 8),
 
-        // grid/list of cards - Fixed duplication issue by using unique keys
+        // grid/list of cards - Fixed the duplication issue
         AnimatedBuilder(
           animation: _staggerAnim,
           builder: (context, _) {
@@ -517,8 +786,8 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
                     crossAxisCount: cols,
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
-                    childAspectRatio: 3/2,
-                    mainAxisExtent: 180
+                    childAspectRatio: 1.0,
+                    mainAxisExtent: 200
                   ),
                   itemBuilder: (ctx, i) {
                     final c = cards[i];
@@ -526,23 +795,16 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
                     final percent = c['percent_change'];
                     final up = (percent ?? 0) >= 0;
                     
-                    // Use unique key to prevent duplication
-                    return KeyedSubtree(
-                      key: ValueKey('price-card-${c['id']}-$i'),
-                      child: Opacity(
-                        opacity: (_staggerAnim.value * (i+1) / (cards.length+1)).clamp(0.0, 1.0),
-                        child: ScaleTransition(
-                          scale: Tween<double>(begin: 0.9, end: 1.0).animate(
-                            CurvedAnimation(
-                              parent: _staggerController,
-                              curve: Interval(0.1 * i, 1.0, curve: Curves.easeOutBack)
-                            )
-                          ),
-                          child: _PriceCard(
-                            data: c,
-                            onTap: () => _openPriceDetail((c['id'] as num).toInt()),
-                          ),
+                    return Opacity(
+                      opacity: 1.0, // Removed the opacity animation that was causing issues
+                      child: ScaleTransition(
+                        scale: Tween<double>(begin: 0.9, end: 1.0).animate(
+                          CurvedAnimation(
+                            parent: _staggerController,
+                            curve: Interval(0.1 * i, 1.0, curve: Curves.easeOutBack)
+                          )
                         ),
+                        child: _buildPriceCard(c, promo, up, percent),
                       ),
                     );
                   },
@@ -553,6 +815,185 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
         ),
         const SizedBox(height: 12)
       ],
+    );
+  }
+
+  Widget _buildPriceCard(Map<String, dynamic> c, dynamic promo, bool up, dynamic percent) {
+    return Material(
+      elevation: 4,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: () => _openPriceDetail((c['id'] as num).toInt()),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white,
+                (up ? Colors.green.shade50 : Colors.red.shade50).withOpacity(0.4),
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          c['price']?['estate_name'] ?? '-',
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          c['plot_unit']?['size'] ?? '-',
+                          style: const TextStyle(color: Colors.grey, fontSize: 14),
+                        )
+                      ],
+                    ),
+                  ),
+                  if (promo != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xffff7a7a), Color(0xffffb46b)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'PROMO -${promo['discount']}%',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10
+                        ),
+                      ),
+                    )
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (promo != null && c['promo_price'] != null)
+                        Text(
+                          _formatNGN(c['promo_price']),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                            color: Colors.deepOrange
+                          ),
+                        ),
+                      if (promo != null && c['promo_price'] != null)
+                        Text(
+                          _formatNGN(c['current']),
+                          style: const TextStyle(
+                            decoration: TextDecoration.lineThrough,
+                            color: Colors.grey,
+                            fontSize: 12
+                          ),
+                        )
+                      else
+                        Text(
+                          _formatNGN(c['current']),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                            color: Colors.green
+                          ),
+                        ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Prev: ${_formatNGN(c['previous'])}',
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      )
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: up ? Colors.green.shade100 : Colors.red.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: up ? Colors.green : Colors.red,
+                            width: 1
+                          )
+                        ),
+                        child: Text(
+                          '${(percent ?? 0).toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            color: up ? Colors.green.shade800 : Colors.red.shade800,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          c['effective'] ?? '-',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.blue.shade800,
+                            fontWeight: FontWeight.w600
+                          ),
+                        ),
+                      )
+                    ],
+                  )
+                ],
+              ),
+              
+              const SizedBox(height: 12),
+              
+              if (c['notes'] != null && c['notes'].toString().isNotEmpty)
+                Text(
+                  c['notes'].toString(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                    fontStyle: FontStyle.italic
+                  ),
+                )
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -739,219 +1180,6 @@ class _ClientDashboardState extends State<ClientDashboard> with TickerProviderSt
                 const SizedBox(height: 24)
               ]),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// New Price Card Widget with improved design
-class _PriceCard extends StatelessWidget {
-  final Map<String, dynamic> data;
-  final VoidCallback onTap;
-
-  const _PriceCard({Key? key, required this.data, required this.onTap}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final promo = data['promo'];
-    final percent = data['percent_change'];
-    final up = (percent ?? 0) >= 0;
-    final currentPrice = data['current'];
-    final previousPrice = data['previous'];
-    final promoPrice = data['promo_price'];
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Material(
-      elevation: 4,
-      borderRadius: BorderRadius.circular(16),
-      color: isDark ? Colors.grey.shade800 : Colors.white,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: isDark 
-                ? LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.grey.shade800,
-                      Colors.grey.shade900,
-                    ]
-                  )
-                : LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.white,
-                      Colors.grey.shade50,
-                    ]
-                  ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              )
-            ],
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          data['price']?['estate_name'] ?? '-',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800, 
-                            fontSize: 16,
-                            color: isDark ? Colors.white : Colors.grey.shade800
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          data['plot_unit']?['size'] ?? '-',
-                          style: TextStyle(
-                            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600, 
-                            fontSize: 14
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
-                  if (promo != null)
-                    Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xffff7a7a), Color(0xffffb46b)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '-${promo['discount']}%',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Promo',
-                          style: TextStyle(
-                            fontSize: 10, 
-                            color: isDark ? Colors.grey.shade400 : Colors.grey
-                          ),
-                        )
-                      ],
-                    )
-                ],
-              ),
-
-              const Spacer(),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (promo != null && promoPrice != null)
-                        Text(
-                          formatNGN(promoPrice),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 18,
-                            color: Colors.deepOrange.shade400
-                          ),
-                        ),
-                      if (promo != null && promoPrice != null)
-                        Text(
-                          formatNGN(currentPrice),
-                          style: TextStyle(
-                            decoration: TextDecoration.lineThrough,
-                            color: isDark ? Colors.grey.shade500 : Colors.grey.shade600,
-                            fontSize: 12
-                          ),
-                        )
-                      else
-                        Text(
-                          formatNGN(currentPrice),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 18,
-                            color: isDark ? Colors.green.shade300 : Colors.green.shade700
-                          ),
-                        ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Prev: ${formatNGN(previousPrice)}',
-                        style: TextStyle(
-                          color: isDark ? Colors.grey.shade500 : Colors.grey.shade600, 
-                          fontSize: 12
-                        ),
-                      )
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: up 
-                              ? (isDark ? Colors.green.shade900.withOpacity(0.3) : Colors.green.shade50) 
-                              : (isDark ? Colors.red.shade900.withOpacity(0.3) : Colors.red.shade50),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${(percent ?? 0).toStringAsFixed(1)}%',
-                          style: TextStyle(
-                            color: up 
-                                ? (isDark ? Colors.green.shade300 : Colors.green.shade700) 
-                                : (isDark ? Colors.red.shade300 : Colors.red.shade700),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          data['effective'] ?? '-',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: isDark ? Colors.grey.shade300 : Colors.grey.shade700
-                          ),
-                        ),
-                      )
-                    ],
-                  )
-                ],
-              )
-            ],
           ),
         ),
       ),

@@ -195,7 +195,11 @@ class MyApp extends StatelessWidget {
           final token = ModalRoute.of(context)?.settings.arguments as String?;
           return MarketerDashboard(token: token ?? '');
         },
-        '/marketer-clients': (context) => const MarketerClients(),
+        '/marketer-clients': (context) {
+          final token = ModalRoute.of(context)?.settings.arguments as String?;
+          return MarketerClients(token: token ?? '');
+        },
+        
         '/marketer-profile': (context) {
             final token = ModalRoute.of(context)?.settings.arguments as String?;
             return MarketerProfile(token: token ?? '');

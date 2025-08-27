@@ -1261,6 +1261,446 @@ class ApiService {
   requestPasswordReset(String mail) {}
 
   // CLIENT SIDE
+
+  // Client dashboard
+  Future<Map<String, dynamic>> getClientDashboardData(String token) async {
+    final url = '$baseUrl/client/dashboard-data/';
+    final headers = <String, String>{'Content-Type': 'application/json', 'Authorization': 'Token $token'};
+    final resp = await http.get(Uri.parse(url), headers: headers);
+    if (resp.statusCode == 200) {
+      return jsonDecode(resp.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to load dashboard data: ${resp.statusCode} ${resp.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getPriceUpdateById(int id, {String? token}) async {
+    final url = '$baseUrl/api/price-update/$id/';
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty) headers['Authorization'] = 'Token $token';
+    final resp = await http.get(Uri.parse(url), headers: headers);
+    if (resp.statusCode == 200) {
+      return jsonDecode(resp.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to load price update: ${resp.statusCode} ${resp.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getEstateModalJson(int estateId, {String? token}) async {
+    final url = '$baseUrl/estates/?estate_id=$estateId';
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty) headers['Authorization'] = 'Token $token';
+    final resp = await http.get(Uri.parse(url), headers: headers);
+    if (resp.statusCode == 200) {
+      return jsonDecode(resp.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to load estate info: ${resp.statusCode} ${resp.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> listEstates({String? token, int page = 1, String? q}) async {
+    final qPart = q != null && q.isNotEmpty ? '&q=${Uri.encodeQueryComponent(q)}' : '';
+    final url = '$baseUrl/estates/?page=$page$qPart';
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty) headers['Authorization'] = 'Token $token';
+    final resp = await http.get(Uri.parse(url), headers: headers);
+    if (resp.statusCode == 200) {
+      return jsonDecode(resp.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to list estates: ${resp.statusCode} ${resp.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> listPromotions({
+    String? token,
+    String filter = 'all',
+    String? q,
+    int page = 1,
+  }) async {
+    final qPart = q != null && q.isNotEmpty ? '&q=${Uri.encodeQueryComponent(q)}' : '';
+    final url = '$baseUrl/promotions/?filter=${Uri.encodeQueryComponent(filter)}&page=$page$qPart';
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty) headers['Authorization'] = 'Token $token';
+    final resp = await http.get(Uri.parse(url), headers: headers);
+    if (resp.statusCode == 200) {
+      return jsonDecode(resp.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to load promotions: ${resp.statusCode} ${resp.body}');
+    }
+  }
+
+  Future<List<dynamic>> listActivePromotions({String? token}) async {
+    final url = '$baseUrl/promotions/active/';
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty) headers['Authorization'] = 'Token $token';
+    final resp = await http.get(Uri.parse(url), headers: headers);
+    if (resp.statusCode == 200) {
+      return jsonDecode(resp.body) as List<dynamic>;
+    } else {
+      throw Exception('Failed to load active promotions: ${resp.statusCode} ${resp.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getPromotionDetail(int id, {String? token}) async {
+    final url = '$baseUrl/promotions/$id/';
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty) headers['Authorization'] = 'Token $token';
+    final resp = await http.get(Uri.parse(url), headers: headers);
+    if (resp.statusCode == 200) {
+      return jsonDecode(resp.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to load promotion detail: ${resp.statusCode} ${resp.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getClientProfile({required String token}) async {
+    final url = '$baseUrl/users/me/';
+    final headers = <String, String>{'Content-Type': 'application/json', 'Authorization': 'Token $token'};
+    final resp = await http.get(Uri.parse(url), headers: headers);
+    if (resp.statusCode == 200) {
+      final data = jsonDecode(resp.body) as Map<String, dynamic>;
+
+      // inline normalize helper (recursively normalizes profile_image / image-like fields)
+      void _normalizeMediaUrlsInMap(Map<String, dynamic> m) {
+        m.forEach((k, v) {
+          if (v is String) {
+            // check common media keys
+            if ((k.toLowerCase().contains('image') || k.toLowerCase().contains('photo') || k.toLowerCase().contains('avatar')) &&
+                v.isNotEmpty &&
+                !v.startsWith('http')) {
+              m[k] = '$baseUrl$v';
+            }
+          } else if (v is Map<String, dynamic>) {
+            _normalizeMediaUrlsInMap(v);
+          } else if (v is List) {
+            for (var i = 0; i < v.length; i++) {
+              final item = v[i];
+              if (item is Map<String, dynamic>) {
+                _normalizeMediaUrlsInMap(item);
+              } else if (item is String) {
+                // if list contains string paths (rare), try normalize
+                if (item.isNotEmpty && !item.startsWith('http')) {
+                  v[i] = '$baseUrl$item';
+                }
+              }
+            }
+          }
+        });
+      }
+
+      _normalizeMediaUrlsInMap(data);
+      return data;
+    } else {
+      throw Exception('Failed to load profile: ${resp.statusCode} ${resp.body}');
+    }
+  }
+
+
+
+  // Future<Map<String, dynamic>> getClientDashboardData(String token) async {
+  //   final url = '$baseUrl/client/dashboard-data/';
+  //   final resp = await http.get(Uri.parse(url), headers: {
+  //     'Content-Type': 'application/json',
+  //     'Authorization': 'Token $token',
+  //   });
+  //   if (resp.statusCode == 200) {
+  //     return jsonDecode(resp.body) as Map<String, dynamic>;
+  //   } else {
+  //     throw Exception('Failed to load dashboard data: ${resp.statusCode} ${resp.body}');
+  //   }
+  // }
+
+  // Future<Map<String, dynamic>> getPriceUpdateById(int id, {String token = ''}) async {
+  //   final url = '$baseUrl/api/price-update/$id/';
+  //   final headers = {
+  //     'Content-Type': 'application/json',
+  //     if (token.isNotEmpty) 'Authorization': 'Token $token',
+  //   };
+  //   final resp = await http.get(Uri.parse(url), headers: headers);
+  //   if (resp.statusCode == 200) {
+  //     return jsonDecode(resp.body) as Map<String, dynamic>;
+  //   } else {
+  //     throw Exception('Failed to load price update: ${resp.statusCode}');
+  //   }
+  // }
+
+  // Future<Map<String, dynamic>> getEstateModalJson(int estateId, {String token = ''}) async {
+  //   final url = '$baseUrl/estates/?estate_id=$estateId';
+  //   final headers = {
+  //     'Content-Type': 'application/json',
+  //     if (token.isNotEmpty) 'Authorization': 'Token $token',
+  //   };
+  //   final resp = await http.get(Uri.parse(url), headers: headers);
+  //   if (resp.statusCode == 200) {
+  //     return jsonDecode(resp.body) as Map<String, dynamic>;
+  //   } else {
+  //     throw Exception('Failed to load estate info: ${resp.statusCode}');
+  //   }
+  // }
+
+  // Future<Map<String, dynamic>> listEstates({String token = '', int page = 1, String? q}) async {
+  //   final qPart = q != null && q.isNotEmpty ? '&q=${Uri.encodeQueryComponent(q)}' : '';
+  //   final url = '$baseUrl/estates/?page=$page$qPart';
+  //   final headers = {
+  //     'Content-Type': 'application/json',
+  //     if (token.isNotEmpty) 'Authorization': 'Token $token',
+  //   };
+  //   final resp = await http.get(Uri.parse(url), headers: headers);
+  //   if (resp.statusCode == 200) {
+  //     return jsonDecode(resp.body) as Map<String, dynamic>;
+  //   } else {
+  //     throw Exception('Failed to list estates: ${resp.statusCode}');
+  //   }
+  // }
+
+  // Future<Map<String, dynamic>> listPromotions({
+  //   String token = '',
+  //   String filter = 'all',
+  //   String? q,
+  //   int page = 1,
+  // }) async {
+  //   final qPart = q != null && q.isNotEmpty ? '&q=${Uri.encodeQueryComponent(q)}' : '';
+  //   final url = '$baseUrl/promotions/?filter=${Uri.encodeQueryComponent(filter)}&page=$page$qPart';
+  //   final headers = {
+  //     'Content-Type': 'application/json',
+  //     if (token.isNotEmpty) 'Authorization': 'Token $token',
+  //   };
+  //   final resp = await http.get(Uri.parse(url), headers: headers);
+  //   if (resp.statusCode == 200) {
+  //     return jsonDecode(resp.body) as Map<String, dynamic>;
+  //   } else {
+  //     throw Exception('Failed to load promotions: ${resp.statusCode}');
+  //   }
+  // }
+
+  // Future<List<dynamic>> listActivePromotions({String token = ''}) async {
+  //   final url = '$baseUrl/promotions/active/';
+  //   final headers = {
+  //     'Content-Type': 'application/json',
+  //     if (token.isNotEmpty) 'Authorization': 'Token $token',
+  //   };
+  //   final resp = await http.get(Uri.parse(url), headers: headers);
+  //   if (resp.statusCode == 200) {
+  //     return jsonDecode(resp.body) as List<dynamic>;
+  //   } else {
+  //     throw Exception('Failed to load active promotions');
+  //   }
+  // }
+
+  // Future<Map<String, dynamic>> getPromotionDetail(int id, {String token = ''}) async {
+  //   final url = '$baseUrl/promotions/$id/';
+  //   final headers = {
+  //     'Content-Type': 'application/json',
+  //     if (token.isNotEmpty) 'Authorization': 'Token $token',
+  //   };
+  //   final resp = await http.get(Uri.parse(url), headers: headers);
+  //   if (resp.statusCode == 200) {
+  //     return jsonDecode(resp.body) as Map<String, dynamic>;
+  //   } else {
+  //     throw Exception('Failed to load promotion detail: ${resp.statusCode}');
+  //   }
+  // }
+
+  // Future<Map<String, dynamic>> getClientProfile({required String token}) async {
+  //   final url = '$baseUrl/clients/profile/';
+  //   final resp = await http.get(Uri.parse(url), headers: {
+  //     'Content-Type': 'application/json',
+  //     'Authorization': 'Token $token',
+  //   });
+  //   if (resp.statusCode == 200) {
+  //     final data = jsonDecode(resp.body) as Map<String, dynamic>;
+  //     _normalizeMediaUrls(data);
+  //     return data;
+  //   } else {
+  //     throw Exception('Failed to load profile: ${resp.statusCode}');
+  //   }
+  // }
+
+
+  /// Update client profile
+  Future<void> updateClientProfileMultipart({
+    required String token,
+    File? profileImage,
+    Map<String, String>? fields,
+  }) async {
+    final dio = Dio();
+    final url = '$baseUrl/clients/profile/update/';
+    try {
+      final formData = FormData();
+
+      fields?.forEach((k, v) {
+        if (v.isNotEmpty) formData.fields.add(MapEntry(k, v));
+      });
+
+      if (profileImage != null) {
+        final fileName = profileImage.path.split('/').last;
+        formData.files.add(MapEntry(
+          'profile_image',
+          await MultipartFile.fromFile(profileImage.path, filename: fileName),
+        ));
+      }
+
+      final response = await dio.post(url,
+          data: formData,
+          options: Options(headers: {'Authorization': 'Token $token'}));
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Failed to update profile: ${response.statusCode}');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<dynamic>> getClientClientProperties({required String token}) async {
+    final url = '$baseUrl/clients/properties/';
+    final resp = await http.get(Uri.parse(url), headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Token $token',
+    });
+    if (resp.statusCode == 200) {
+      final list = jsonDecode(resp.body) as List<dynamic>;
+      return list;
+    } else {
+      throw Exception('Failed to load client properties');
+    }
+  }
+
+  Future<Map<String, dynamic>> getClientAppreciation({required String token}) async {
+    final url = '$baseUrl/clients/appreciation/';
+    final resp = await http.get(Uri.parse(url), headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Token $token',
+    });
+    if (resp.statusCode == 200) {
+      return jsonDecode(resp.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to load appreciation data');
+    }
+  }
+
+  Future<void> changeClientPassword({
+    required String token,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final url = '$baseUrl/clients/change-password/';
+    final resp = await http.post(Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Token $token',
+        },
+        body: jsonEncode({'current_password': currentPassword, 'new_password': newPassword}));
+    if (resp.statusCode != 200) {
+      throw Exception('Failed to change password: ${resp.body}');
+    }
+  }
+
+  Future<List<dynamic>> getClientClientTransactions({required String token}) async {
+    final url = '$baseUrl/clients/transactions/';
+    final resp = await http.get(Uri.parse(url), headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Token $token',
+    });
+    if (resp.statusCode == 200) {
+      return jsonDecode(resp.body) as List<dynamic>;
+    } else {
+      throw Exception('Failed to load transactions: ${resp.statusCode}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getTransactionDetails({
+    required int transactionId,
+    required String token,
+  }) async {
+    final url = '$baseUrl/clients/transaction/$transactionId/details/';
+    final resp = await http.get(Uri.parse(url), headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Token $token',
+    });
+    if (resp.statusCode == 200) {
+      return jsonDecode(resp.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to load transaction details: ${resp.statusCode}');
+    }
+  }
+
+  Future<List<dynamic>> getClientTransactionPayments({
+    required int transactionId,
+    required String token,
+  }) async {
+    final url = '$baseUrl/clients/transaction/payments/?transaction_id=$transactionId';
+    final resp = await http.get(Uri.parse(url), headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Token $token',
+    });
+    if (resp.statusCode == 200) {
+      return jsonDecode(resp.body) as List<dynamic>;
+    } else {
+      throw Exception('Failed to load transaction payments: ${resp.statusCode}');
+    }
+  }
+
+  Future<void> downloadPaymentReceiptAndOpen({
+    required String reference,
+    required String token,
+    String filename = 'receipt.pdf',
+  }) async {
+    final url = '$baseUrl/payment/receipt/$reference/';
+    final resp = await http.get(Uri.parse(url), headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Token $token',
+    });
+    if (resp.statusCode == 200) {
+      final contentType = resp.headers['content-type'] ?? '';
+      if (contentType.contains('application/pdf') || resp.bodyBytes.isNotEmpty) {
+        final tempDir = await getTemporaryDirectory();
+        final file = File('${tempDir.path}/$filename');
+        await file.writeAsBytes(resp.bodyBytes);
+        await OpenFile.open(file.path);
+      } else {
+        // assume JSON with url or base64
+        final js = jsonDecode(resp.body);
+        if (js['url'] != null) {
+          final pdfResp = await http.get(Uri.parse(js['url']));
+          final tempDir = await getTemporaryDirectory();
+          final file = File('${tempDir.path}/$filename');
+          await file.writeAsBytes(pdfResp.bodyBytes);
+          await OpenFile.open(file.path);
+        } else {
+          throw Exception('Unsupported receipt format');
+        }
+      }
+    } else {
+      throw Exception('Failed to download receipt: ${resp.statusCode}');
+    }
+  }
+
+  Future<http.Response> downloadTransactionReceiptRaw({
+    required int transactionId,
+    required String token,
+  }) async {
+    final url = '$baseUrl/transaction/$transactionId/receipt/';
+    return await http.get(Uri.parse(url), headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Token $token',
+    });
+  }
+
+  void _normalizeMediaUrls(Map<String, dynamic> data) {
+    // shallow normalization for common keys
+    final keys = ['profile_image', 'image', 'avatar', 'photo'];
+    for (final k in keys) {
+      if (data.containsKey(k)) {
+        final v = data[k];
+        if (v != null && v is String && v.isNotEmpty && !v.startsWith('http')) {
+          data[k] = baseUrl + v;
+        }
+      }
+    }
+  }
+
+
+
   /// Estate plot details Views
   Future<Map<String, dynamic>> fetchClientEstatePlotDetail({
     required int estateId,
@@ -1983,6 +2423,254 @@ class ApiService {
   }
 
   // MARKETER SIDE
+
+  // marketer dashboard
+  Future<Map<String, dynamic>> fetchMarketerDashboard({
+    required String token,
+    int? marketerId,
+  }) async {
+    final buffer = StringBuffer('$baseUrl/marketers/dashboard/');
+    if (marketerId != null) buffer.write('?marketer_id=${Uri.encodeComponent(marketerId.toString())}');
+
+    final response = await http.get(
+      Uri.parse(buffer.toString()),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(response.body) as Map<String, dynamic>;
+      return data;
+    } else {
+      // Keep same error-style as other methods
+      throw Exception('Failed to fetch marketer dashboard: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchMarketerChartRange({
+    required String token,
+    String range = 'weekly',
+    int? marketerId,
+  }) async {
+    final params = StringBuffer('?range=${Uri.encodeQueryComponent(range)}');
+    if (marketerId != null) params.write('&marketer_id=${Uri.encodeComponent(marketerId.toString())}');
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/marketers/dashboard/data/$params'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> block = jsonDecode(response.body) as Map<String, dynamic>;
+      return block;
+    } else {
+      throw Exception('Failed to fetch marketer chart range: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  List<Map<String, dynamic>> parseChartBlockToChartData(Map<String, dynamic> block) {
+    final List<dynamic> labels = (block['labels'] ?? []) as List<dynamic>;
+    final List<dynamic> tx = (block['tx'] ?? []) as List<dynamic>;
+    final List<dynamic> est = (block['est'] ?? []) as List<dynamic>;
+    final List<dynamic> cli = (block['cli'] ?? []) as List<dynamic>;
+
+    final int n = labels.length;
+    final List<Map<String, dynamic>> out = List.empty(growable: true);
+
+    for (var i = 0; i < n; i++) {
+      final String time = labels[i]?.toString() ?? '';
+      final double sales = _toDoubleSafe(i < tx.length ? tx[i] : 0);
+      final double revenue = _toDoubleSafe(i < est.length ? est[i] : 0);
+      final double customers = _toDoubleSafe(i < cli.length ? cli[i] : 0);
+
+      out.add({
+        'time': time,
+        'sales': sales,
+        'revenue': revenue,
+        'customers': customers,
+      });
+    }
+    return out;
+  }
+
+  double _toDoubleSafe(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is int) return v.toDouble();
+    if (v is double) return v;
+    if (v is String) {
+      final cleaned = v.replaceAll(',', '');
+      return double.tryParse(cleaned) ?? 0.0;
+    }
+    if (v is num) return v.toDouble();
+    return 0.0;
+  }
+
+  // marketer client's page
+  Future<Map<String, dynamic>> fetchMarketerClients({
+    required String token,
+    int? marketerId,
+    int page = 1,
+    int pageSize = 12,
+    String? search,
+    bool? allocated,
+  }) async {
+    final queryParams = <String, String>{
+      'page': page.toString(),
+      'page_size': pageSize.toString(),
+    };
+    if (marketerId != null) queryParams['marketer_id'] = marketerId.toString();
+    if (search != null && search.isNotEmpty) queryParams['search'] = search;
+    if (allocated != null) queryParams['allocated'] = allocated ? 'true' : 'false';
+
+    final uri = Uri.parse('$baseUrl/marketers/clients/').replace(queryParameters: queryParams);
+    final response = await http.get(
+      uri,
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      // DRF paginated response
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      // Normalize profile_image urls if present
+      if (data['results'] is List) {
+        for (final item in data['results']) {
+          if (item is Map && item['profile_image'] != null && item['profile_image'] is String) {
+            final img = item['profile_image'] as String;
+            if (img.isNotEmpty && !img.startsWith('http')) {
+              item['profile_image'] = '$baseUrl$img';
+            }
+          }
+        }
+      }
+      return data;
+    } else {
+      throw Exception('Failed to load clients: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+
+  Future<Map<String, dynamic>> getMarketerClientDetail({
+    required int clientId,
+    required String token,
+    int? marketerId,
+  }) async {
+    final query = marketerId != null ? '?marketer_id=$marketerId' : '';
+    final uri = Uri.parse('$baseUrl/marketers/clients/$clientId/$query');
+    final response = await http.get(
+      uri,
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(response.body);
+
+      // Normalize profile_image url
+      if (data['profile_image'] != null && data['profile_image'] is String) {
+        final img = data['profile_image'] as String;
+        if (img.isNotEmpty && !img.startsWith('http')) {
+          data['profile_image'] = '$baseUrl$img';
+        }
+      }
+
+      // Optionally normalize nested transaction images/urls if any
+      if (data['transactions_by_estate'] is List) {
+        for (final estateGroup in data['transactions_by_estate']) {
+          if (estateGroup is Map && estateGroup['transactions'] is List) {
+            for (final txn in estateGroup['transactions']) {
+              if (txn is Map && txn['plot_number'] == null) {
+                // nothing to do, placeholder if you want to adapt later
+              }
+            }
+          }
+        }
+      }
+
+      return data;
+    } else if (response.statusCode == 404) {
+      throw Exception('Client not found (404)');
+    } else if (response.statusCode == 403) {
+      throw Exception('Permission denied (403)');
+    } else {
+      throw Exception('Failed to fetch client detail: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchClientTransactions({
+    required int clientId,
+    required String token,
+    int page = 1,
+    int pageSize = 12,
+    int? estateId,
+    bool? allocated,
+    String? status,
+    String? startDate,
+    String? endDate,
+  }) async {
+    final params = <String, String>{
+      'page': page.toString(),
+      'page_size': pageSize.toString(),
+    };
+    if (estateId != null) params['estate_id'] = estateId.toString();
+    if (allocated != null) params['allocated'] = allocated ? 'true' : 'false';
+    if (status != null && status.isNotEmpty) params['status'] = status;
+    if (startDate != null && startDate.isNotEmpty) params['start_date'] = startDate;
+    if (endDate != null && endDate.isNotEmpty) params['end_date'] = endDate;
+
+    final uri = Uri.parse('$baseUrl/marketers/clients/$clientId/transactions/').replace(queryParameters: params);
+    final response = await http.get(
+      uri,
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(response.body);
+
+      // Optionally adjust amounts / dates formatting client-side if needed
+      return data;
+    } else {
+      throw Exception('Failed to load transactions: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+
+  Future<Map<String, dynamic>> searchMarketerClients({
+    required String token,
+    String query = '',
+    int page = 1,
+    int pageSize = 12,
+    int? marketerId,
+  }) async {
+    return await fetchMarketerClients(
+      token: token,
+      marketerId: marketerId,
+      page: page,
+      pageSize: pageSize,
+      search: query,
+    );
+  }
+
+  String buildWhatsAppLink(String rawPhone) {
+    if (rawPhone == null) return '';
+    String s = rawPhone.replaceAll(RegExp(r'[^\d+]'), '');
+    s = s.replaceFirst(RegExp(r'^\+'), '');
+    return 'https://wa.me/$s';
+  }
 
   // Profile Methods
   Future<Map<String, dynamic>> getMarketerProfileByToken(

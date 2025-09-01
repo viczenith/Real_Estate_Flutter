@@ -838,19 +838,7 @@ class _MarketerClientsState extends State<MarketerClients> with TickerProviderSt
             children: [
               Icon(Icons.people_outline, size: 76, color: Colors.grey.shade400),
               const SizedBox(height: 16),
-              const Text('No Clients Found', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 12),
-              const Text('You haven\'t been assigned any clients yet.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 16)),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.add),
-                label: const Text('Add New Client'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
+              const Text('Client Not Found', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
             ],
           ),
         ),

@@ -234,7 +234,7 @@ class _MarketerDashboardState extends State<MarketerDashboard>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return AppLayout(
-      pageTitle: 'Marketer Dashboard',
+      pageTitle: 'Dashboard',
       token: widget.token,
       side: AppSide.marketer,
       child: Scaffold(
@@ -303,7 +303,7 @@ class _MarketerDashboardState extends State<MarketerDashboard>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Dashboard Overview', 
+                'Overview', 
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                   color: isDark ? Colors.white : Colors.grey.shade800,

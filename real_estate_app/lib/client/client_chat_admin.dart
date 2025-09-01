@@ -85,7 +85,7 @@ class _ClientChatAdminState extends State<ClientChatAdmin> {
   @override
   Widget build(BuildContext context) {
     return AppLayout(
-      pageTitle: 'Chat with Admin',
+      pageTitle: 'Chat',
       token: widget.token ?? '',
       side: AppSide.client,
       child: Scaffold(
@@ -108,7 +108,7 @@ class _ClientChatAdminState extends State<ClientChatAdmin> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("Admin", style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text("Admin Support", style: TextStyle(fontWeight: FontWeight.bold)),
                           SizedBox(height: 2),
                           Text("Online", style: TextStyle(color: Colors.green, fontSize: 12)),
                         ],

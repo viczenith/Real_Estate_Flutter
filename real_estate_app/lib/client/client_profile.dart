@@ -25,6 +25,7 @@ class ClientProfile extends StatefulWidget {
 class _ClientProfileState extends State<ClientProfile>
     with TickerProviderStateMixin {
   String? _headerImageUrl;
+  String? _baseUrl;
   late final AnimationController _glowController;
   final Map<int, NumberFormat> _currencyFormatCache = {};
   // bool _aboutExpanded = false;
@@ -269,7 +270,7 @@ class _ClientProfileState extends State<ClientProfile>
   @override
   Widget build(BuildContext context) {
     return AppLayout(
-      pageTitle: 'Client Profile',
+      pageTitle: 'Profile',
       token: widget.token,
       side: AppSide.client,
       child: AnnotatedRegion<SystemUiOverlayStyle>(
@@ -604,7 +605,6 @@ class _ClientProfileState extends State<ClientProfile>
     }
   }
 
-
   Widget _buildPropertiesTab() {
     return FutureBuilder<List<dynamic>>(
       future: _propertiesFuture,
@@ -628,23 +628,8 @@ class _ClientProfileState extends State<ClientProfile>
                     style: GoogleFonts.sora(
                         fontSize: 20, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
-                Text('You haven\'t purchased any properties yet',
+                Text("We haven't uploaded you Purchased property yet",
                     style: GoogleFonts.sora(color: Colors.grey)),
-                const SizedBox(height: 18),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    // optional: navigate to marketplace
-                  },
-                  icon: const Icon(Icons.add_road),
-                  label: Text('Explore Estates', style: GoogleFonts.sora()),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4154F1),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 22, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
               ],
             ),
           );
@@ -706,6 +691,7 @@ class _ClientProfileState extends State<ClientProfile>
     if (cand is String) return int.tryParse(cand);
     return null;
   }
+  
   // PLOT DETAILS HELPERS
   int? _extractPlotSizeId(Map<String, dynamic> p) {
     if (p == null) return null;
@@ -877,7 +863,6 @@ class _ClientProfileState extends State<ClientProfile>
                 const Divider(height: 1),
                 const SizedBox(height: 12),
 
-                // actions row: date, receipts, view details
                 Row(
                   children: [
                     Column(
@@ -893,22 +878,6 @@ class _ClientProfileState extends State<ClientProfile>
                       ],
                     ),
                     const Spacer(),
-                    // receipts button
-                    // OutlinedButton.icon(
-                    //   onPressed: () {
-                    //     // implement receipt view
-                    //   },
-                    //   icon: const Icon(Icons.receipt, size: 16),
-                    //   label: Text('Receipts',
-                    //       style: GoogleFonts.sora(fontSize: 14)),
-                    //   style: OutlinedButton.styleFrom(
-                    //     padding: const EdgeInsets.symmetric(
-                    //         horizontal: 14, vertical: 10),
-                    //     shape: RoundedRectangleBorder(
-                    //         borderRadius: BorderRadius.circular(12)),
-                    //   ),
-                    // ),
-                    
                     OutlinedButton.icon(
                       onPressed: () {
                         final int? estateId = _extractEstateId(property);
@@ -964,7 +933,6 @@ class _ClientProfileState extends State<ClientProfile>
       ),
     );
   }
-
 
   Widget _buildPropertyInfoItemWithChip(IconData icon, String text) {
     return Container(
@@ -1073,50 +1041,9 @@ class _ClientProfileState extends State<ClientProfile>
       return Colors.grey;
     }
 
-    // High-level: try fetch+save+open via ApiService, fallback to web URL if that fails
-    // Future<void> _openReceiptAuthenticated({String? reference, int? txId}) async {
-    //   final base = api.baseUrl.endsWith('/') ? api.baseUrl.substring(0, api.baseUrl.length - 1) : api.baseUrl;
-
-    //   try {
-    //     final String path = await api.fetchAndSaveReceipt(token: widget.token, txId: txId, reference: reference);
-    //     await api.openReceiptFile(path);
-    //     return;
-    //   } catch (e) {
-    //     // fallback to web URL(s)
-    //     try {
-    //       if (reference != null && reference.isNotEmpty) {
-    //         final uriRef = Uri.parse('$base/payment/receipt/${Uri.encodeComponent(reference)}/');
-    //         if (await canLaunchUrl(uriRef)) {
-    //           await launchUrl(uriRef, mode: LaunchMode.externalApplication);
-    //           return;
-    //         } else {
-    //           await launchUrl(uriRef);
-    //           return;
-    //         }
-    //       }
-
-    //       if (txId != null) {
-    //         final txUri = Uri.parse('$base/clients/transaction/$txId/receipt/');
-    //         if (await canLaunchUrl(txUri)) {
-    //           await launchUrl(txUri, mode: LaunchMode.externalApplication);
-    //           return;
-    //         } else {
-    //           await launchUrl(txUri);
-    //           return;
-    //         }
-    //       }
-    //     } catch (fallbackErr) {
-    //       // ignore fallback error; show final snackbar below
-    //     }
-
-    //     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Receipt not available: $e')));
-    //   }
-    // }
-
     Future<void> _openReceiptAuthenticated({String? reference, int? txId}) async {
       final api = ApiService();
 
-      // Show progress dialog
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -1164,7 +1091,6 @@ class _ClientProfileState extends State<ClientProfile>
       } catch (e) {
         if (mounted) {
           Navigator.of(context, rootNavigator: true).pop();
-          // Update fallback URLs to match Django patterns
           try {
             if (reference != null && reference.isNotEmpty) {
               final uriRef = Uri.parse('${ApiService().baseUrl.replaceAll(RegExp(r'/api/?$'), '')}/payment/receipt/${Uri.encodeComponent(reference)}/');
@@ -1242,7 +1168,6 @@ class _ClientProfileState extends State<ClientProfile>
                       const Icon(Icons.calendar_today, size: 16),
                       const SizedBox(width: 8),
                       Text('Purchased on ${purchaseDate.isNotEmpty ? purchaseDate : 'N/A'}', style: GoogleFonts.sora(fontSize: 13, color: Colors.grey[800])),
-
                     ]),
 
                     const SizedBox(height: 18),
@@ -1252,89 +1177,46 @@ class _ClientProfileState extends State<ClientProfile>
                       _buildInfoChip('Plot Number', property['plot_number']?.toString() ?? 'Reserved'),
                       _buildInfoChip('Plot Size', property['plot_size']?.toString() ?? 'N/A'),
                       _buildInfoChip('Estate', estateName),
-                      _buildInfoChip('Receipt', property['receipt_number']?.toString() ?? property['reference_code']?.toString() ?? '—'),
+                      // Receipt under estate name intentionally removed
                     ]),
 
                     const SizedBox(height: 20),
 
-                    // Row(children: [
-                    //   Expanded(
-                    //     child: OutlinedButton.icon(
-                    //       onPressed: () async {
-                    //         final ref = (property['reference_code'] ?? property['receipt_number'] ?? property['receipt'] ?? '').toString();
-                    //         if (ref.isNotEmpty || txId != null) {
-                    //           await _openReceiptAuthenticated(reference: ref.isNotEmpty ? ref : null, txId: txId);
-                    //         } else {
-                    //           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No receipt available')));
-                    //         }
-                    //       },
-                    //       icon: const Icon(Icons.download_rounded),
-                    //       label: Text('Download Receipt', style: GoogleFonts.sora()),
-                    //       style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    //     ),
-                    //   ),
-                    //   const SizedBox(width: 12),
-                    //   Expanded(
-                    //     child: ElevatedButton.icon(
-                    //       onPressed: () {},
-                    //       icon: const Icon(Icons.open_in_new),
-                    //       label: Text('Open Property', style: GoogleFonts.sora()),
-                    //       style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4154F1), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    //     ),
-                    //   ),
-                    // ]),
+                    Row(children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            final int? estateId = _extractEstateId(property);
+                            final int? plotSizeId = _extractPlotSizeId(property);
 
-                    // inside _openPropertyDetailsModal(...) where you build the modal's action row:
-
-                      Row(children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              final int? estateId = _extractEstateId(property);
-                              final int? plotSizeId = _extractPlotSizeId(property);
-
-                              if (estateId == null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Estate details not available for this property')),
-                                );
-                                return;
-                              }
-
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => ClientEstatePlotDetailsPage(
-                                    estateId: estateId,
-                                    token: widget.token,
-                                    plotSizeId: plotSizeId,
-                                  ),
-                                ),
+                            if (estateId == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Estate details not available for this property')),
                               );
-                            },
+                              return;
+                            }
 
-                            icon: const Icon(Icons.open_in_new),
-                            label: Text('View Plot Details', style: GoogleFonts.sora()),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ClientEstatePlotDetailsPage(
+                                  estateId: estateId,
+                                  token: widget.token,
+                                  plotSizeId: plotSizeId,
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.open_in_new),
+                          label: Text('View Plot Details', style: GoogleFonts.sora()),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
+                      ),
 
-                        const SizedBox(width: 12),
-                        // Expanded(
-                        //   child: ElevatedButton.icon(
-                        //     onPressed: () => _openPropertyDetailsModal(property, index),
-                        //     icon: const Icon(Icons.visibility, size: 18),
-                        //     label: Text('Open Property', style: GoogleFonts.sora(color: Colors.white)),
-                        //     style: ElevatedButton.styleFrom(
-                        //       backgroundColor: const Color(0xFF4154F1),
-                        //       padding: const EdgeInsets.symmetric(vertical: 14),
-                        //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        //     ),
-                        //   ),
-                        // ),
-                      ]),
-
+                      const SizedBox(width: 12),
+                    ]),
 
                     const SizedBox(height: 24),
                     Text('Transaction Details', style: GoogleFonts.sora(fontSize: 16, fontWeight: FontWeight.w700)),
@@ -1362,13 +1244,11 @@ class _ClientProfileState extends State<ClientProfile>
                           final String txStatus = _safeString(tx['status'] ?? property['status'] ?? '');
                           final String ref = _safeString(tx['reference_code'] ?? tx['reference'] ?? tx['receipt_number'] ?? '');
 
-                          // sum existing payments
                           double totalPaid = 0.0;
                           for (final p in payments) {
                             totalPaid += _toDouble(p['amount'] ?? p['amount_paid'] ?? p['paid'] ?? 0);
                           }
 
-                          // helpers
                           final bool looksPaidByStatus = txStatus.toLowerCase().contains('paid') ||
                               txStatus.toLowerCase().contains('fully paid') ||
                               txStatus.toLowerCase().contains('paid complete');
@@ -1378,13 +1258,9 @@ class _ClientProfileState extends State<ClientProfile>
                                   .toLowerCase() ==
                               'full');
 
-                          // compute an initial computed balance for heuristics
                           final double computedBalance = (totalAmount - totalPaid);
-
-                          // TOLERANCE for floating point comparisons (avoid tiny negative or near-zero showing)
                           const double zeroTolerance = 0.01;
 
-                          // If status/allocation clearly indicates fully paid, force totals and optionally synthesize a payment row
                           if (looksPaidByStatus || isFullAllocation) {
                             totalPaid = totalAmount.clamp(0.0, double.infinity);
 
@@ -1404,7 +1280,6 @@ class _ClientProfileState extends State<ClientProfile>
                               }
                             }
                           } else {
-                            // fallback: if no payments but computed balance is essentially zero, treat as paid
                             if (payments.isEmpty) {
                               final bool treatAsPaid = (computedBalance.abs() < zeroTolerance && totalAmount > 0);
                               final String syntheticRef = ref.isNotEmpty ? ref : (property['receipt_number']?.toString() ?? property['reference_code']?.toString() ?? '');
@@ -1424,38 +1299,28 @@ class _ClientProfileState extends State<ClientProfile>
                             }
                           }
 
-                          // final balance (clamped to avoid negatives)
                           final double balance = (totalAmount - totalPaid).clamp(0.0, double.infinity);
                           final bool isZeroBalance = balance.abs() < zeroTolerance;
 
-                          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Text('Total', style: GoogleFonts.sora(color: Colors.grey[700])),
-                                const SizedBox(height: 6),
-                                Text(formatCurrency(totalAmount, decimalDigits: 2), style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700)),
-                              ]),
-                              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                                Text('Date', style: GoogleFonts.sora(color: Colors.grey[700])),
-                                const SizedBox(height: 6),
-                                Text(txDate.isNotEmpty ? txDate : '—', style: GoogleFonts.sora()),
-                              ]),
-                            ]),
-                            const SizedBox(height: 12),
+                          // compute payment type display value
+                          final String paymentTypeValue = _safeString(tx['allocation']?['payment_type'] ?? tx['payment_type'] ?? property['payment_type'] ?? '');
 
+                          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            // show only status chip (Total/Date rows removed as requested)
                             Row(children: [
-                              if (ref.isNotEmpty)
-                                Padding(padding: const EdgeInsets.only(right: 12.0), child: Chip(label: Text(ref))),
                               Chip(backgroundColor: _getStatusColor(txStatus), label: Text(txStatus.isNotEmpty ? txStatus : 'Unknown', style: const TextStyle(color: Colors.white))),
                             ]),
 
                             const SizedBox(height: 12),
+
+                            // PAYMENT TYPE (added back as requested)
                             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                               Text('Payment Type', style: GoogleFonts.sora(fontWeight: FontWeight.w600)),
-                              Text(_safeString(tx['allocation']?['payment_type'] ?? tx['payment_type'] ?? property['payment_type'] ?? ''), style: GoogleFonts.sora()),
+                              Text(paymentTypeValue.isNotEmpty ? paymentTypeValue : '—', style: GoogleFonts.sora()),
                             ]),
                             const SizedBox(height: 12),
 
+                            // keep Total Paid / Balance
                             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                 Text('Total Paid', style: GoogleFonts.sora(color: Colors.grey[700])),
@@ -1470,11 +1335,17 @@ class _ClientProfileState extends State<ClientProfile>
                             ]),
                             const SizedBox(height: 18),
 
+                            // === Installment / Part payment block (restored) ===
                             if ((_safeString(tx['allocation']?['payment_type'] ?? tx['payment_type'] ?? property['payment_type'] ?? '')).toLowerCase() == 'part') ...[
                               const SizedBox(height: 8),
                               Text('Installment Plan', style: GoogleFonts.sora(fontWeight: FontWeight.w600)),
                               const SizedBox(height: 8),
-                              Text(tx['installment_plan'] == 'custom' ? '${_safeString(tx['first_percent'])}%, ${_safeString(tx['second_percent'])}%, ${_safeString(tx['third_percent'])}%' : (_safeString(tx['installment_plan']).replaceAll('-', '%, ') + (tx['installment_plan'] != null ? '%' : '')), style: GoogleFonts.sora()),
+                              Text(
+                                tx['installment_plan'] == 'custom'
+                                    ? '${_safeString(tx['first_percent'])}%, ${_safeString(tx['second_percent'])}%, ${_safeString(tx['third_percent'])}%'
+                                    : (_safeString(tx['installment_plan']).replaceAll('-', '%, ') + (tx['installment_plan'] != null ? '%' : '')),
+                                style: GoogleFonts.sora(),
+                              ),
                               const SizedBox(height: 8),
                               Wrap(spacing: 12, children: [
                                 _buildInfoChip('1st', formatCurrency(_toDouble(tx['first_installment'] ?? 0))),
@@ -1483,6 +1354,7 @@ class _ClientProfileState extends State<ClientProfile>
                               ]),
                               const SizedBox(height: 12),
                             ],
+                            // === end installment block ===
 
                             Text('Payment Receipts', style: GoogleFonts.sora(fontWeight: FontWeight.w600)),
                             const SizedBox(height: 8),
@@ -1524,105 +1396,51 @@ class _ClientProfileState extends State<ClientProfile>
                                           },
                                         ),
                                       if (receiptRef.isNotEmpty)
-                                        // IconButton(
-                                        //   icon: const Icon(Icons.picture_as_pdf),
-                                        //   onPressed: () async {
-                                        //     if (receiptRef.isNotEmpty || txId != null) {
-                                        //       await _openReceiptAuthenticated(reference: receiptRef.isNotEmpty ? receiptRef : null, txId: txId);
-                                        //     } else {
-                                        //       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No receipt available')));
-                                        //     }
-                                        //   },
-                                        // ),
-                                        // if (receiptRef.isNotEmpty)
-                                        // IconButton(
-                                        //   icon: const Icon(Icons.picture_as_pdf),
-                                        //   tooltip: 'Download receipt PDF',
-                                        //   onPressed: () async {
-                                        //     if (receiptRef.isNotEmpty || txId != null) {
-                                        //       await _openReceiptAuthenticated(reference: receiptRef.isNotEmpty ? receiptRef : null, txId: txId);
-                                        //     } else {
-                                        //       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No receipt available')));
-                                        //     }
-                                        //   },
-                                        
-                                        
-                                        // ),
+                                        IconButton(
+                                          icon: const Icon(Icons.picture_as_pdf),
+                                          tooltip: 'Download receipt PDF',
+                                          onPressed: () async {
+                                            final api = ApiService();
+                                            final String? ref = receiptRef.isNotEmpty ? receiptRef : null;
 
-                                      
-                                    if (receiptRef.isNotEmpty)
-                                      IconButton(
-                                        icon: const Icon(Icons.picture_as_pdf),
-                                        tooltip: 'Download receipt PDF',
-                                        onPressed: () async {
-                                          final api = ApiService();
-                                          final String? ref = receiptRef.isNotEmpty ? receiptRef : null;
-
-                                          if ((ref == null || ref.isEmpty) && txId == null) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('No receipt available')),
-                                            );
-                                            return;
-                                          }
-
-                                          // Show progress dialog
-                                          showDialog(
-                                            context: context,
-                                            barrierDismissible: false,
-                                            builder: (_) => WillPopScope(
-                                              onWillPop: () async => false,
-                                              child: AlertDialog(
-                                                content: Column(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: const [
+                                            showDialog(
+                                              context: context,
+                                              barrierDismissible: false,
+                                              builder: (_) => WillPopScope(
+                                                onWillPop: () async => false,
+                                                child: AlertDialog(
+                                                  content: Column(mainAxisSize: MainAxisSize.min, children: const [
                                                     CircularProgressIndicator(),
                                                     SizedBox(height: 12),
                                                     Text('Downloading receipt...'),
-                                                  ],
+                                                  ]),
                                                 ),
                                               ),
-                                            ),
-                                          );
+                                            );
 
-                                          try {
-                                            File file;
-                                            if (ref != null && ref.isNotEmpty) {
-                                              file = await api.downloadReceiptByReference(
+                                            try {
+                                              final File? file = await api.downloadReceiptWithFallback(
                                                 token: widget.token,
                                                 reference: ref,
-                                                onProgress: (received, total) {
-                                                  // Optional: update UI with progress
-                                                },
+                                                transactionId: txId,
+                                                onProgress: (received, total) {},
                                                 openAfterDownload: true,
                                               );
-                                            } else {
-                                              file = await api.downloadReceiptByTransactionId(
-                                                token: widget.token,
-                                                transactionId: txId!,
-                                                onProgress: (received, total) {
-                                                  // Optional: update UI with progress
-                                                },
-                                                openAfterDownload: true,
-                                              );
-                                            }
 
-                                            if (mounted) {
-                                              Navigator.of(context, rootNavigator: true).pop();
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(content: Text('Receipt downloaded: ${file.path}')),
-                                              );
+                                              if (mounted) {
+                                                Navigator.of(context, rootNavigator: true).pop();
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(content: Text(file != null ? 'Receipt saved: ${file.path}' : 'Opened receipt in browser'))
+                                                );
+                                              }
+                                            } catch (e) {
+                                              if (mounted) {
+                                                Navigator.of(context, rootNavigator: true).pop();
+                                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Receipt download failed: $e')));
+                                              }
                                             }
-                                          } catch (e) {
-                                            if (mounted) {
-                                              Navigator.of(context, rootNavigator: true).pop();
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(content: Text('Receipt download failed: $e')),
-                                              );
-                                            }
-                                          }
-                                        },
-                                      ),
-                                                                        
+                                          },
+                                        ),
                                     ]),
                                   );
                                 },
@@ -1642,7 +1460,6 @@ class _ClientProfileState extends State<ClientProfile>
       },
     );
   }
-
 
   Widget _buildAppreciationTab() {
     return FutureBuilder<dynamic>(
@@ -2283,15 +2100,16 @@ class _ClientProfileState extends State<ClientProfile>
 
         final profile = snapshot.data!;
 
+        // Initialize controllers once (keeps user edits across rebuilds)
         if (!_isEditing) {
-          _fullNameController.text = profile['full_name'] ?? '';
-          _aboutController.text = profile['about'] ?? '';
-          _companyController.text = profile['company'] ?? '';
-          _jobController.text = profile['job'] ?? '';
-          _countryController.text = profile['country'] ?? '';
-          _addressController.text = profile['address'] ?? '';
-          _phoneController.text = profile['phone'] ?? '';
-          _emailController.text = profile['email'] ?? '';
+          _fullNameController.text = (profile['full_name'] ?? '').toString();
+          _aboutController.text = (profile['about'] ?? '').toString();
+          _companyController.text = (profile['company'] ?? '').toString();
+          _jobController.text = (profile['job'] ?? '').toString();
+          _countryController.text = (profile['country'] ?? '').toString(); // <- ensure country is set
+          _addressController.text = (profile['address'] ?? '').toString();
+          _phoneController.text = (profile['phone'] ?? '').toString();
+          _emailController.text = (profile['email'] ?? '').toString();
           _isEditing = true;
         }
 
@@ -2408,7 +2226,7 @@ class _ClientProfileState extends State<ClientProfile>
                             ),
                             const SizedBox(height: 8),
 
-                            // Chips area: wrap inside Expanded so it won't overflow horizontally
+                            // Chips area
                             LayoutBuilder(builder: (ctx, c) {
                               return ConstrainedBox(
                                 constraints: BoxConstraints(maxWidth: c.maxWidth),
@@ -2473,16 +2291,16 @@ class _ClientProfileState extends State<ClientProfile>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // About Me (prominent)
+                        // About Me
                         Text('About Me', style: GoogleFonts.sora(fontSize: 14, fontWeight: FontWeight.w800)),
                         const SizedBox(height: 8),
                         _input(
                           controller: _aboutController,
-                          label: 'Tell us about yourself',
+                          label: 'Your Bio',
                           icon: Icons.edit,
                           enabled: true,
                           maxLines: 5,
-                          hint: 'e.g. I build beautiful apps and love clean UI...',
+                          hint: 'e.g. Who you are...',
                         ),
                         const SizedBox(height: 14),
 
@@ -2505,7 +2323,8 @@ class _ClientProfileState extends State<ClientProfile>
                                     const SizedBox(height: 12),
                                     _input(controller: _companyController, label: 'Company', icon: Icons.business),
                                     const SizedBox(height: 12),
-                                    _input(controller: _countryController, label: 'Country', icon: Icons.flag),
+                                    // Country field (editable here)
+                                    _input(controller: _countryController, label: 'Country', icon: Icons.flag, enabled: true, keyboardType: TextInputType.text),
                                   ]),
                                 ),
                                 const SizedBox(width: 12),
@@ -2540,9 +2359,12 @@ class _ClientProfileState extends State<ClientProfile>
                               const SizedBox(height: 12),
                               _input(controller: _emailController, label: 'Email', icon: Icons.email, enabled: false, keyboardType: TextInputType.emailAddress),
                               const SizedBox(height: 12),
-                              _input(controller: _companyController, label: 'Company', icon: Icons.business),
+                              _input(controller: _companyController, label: 'Your Company', icon: Icons.business),
                               const SizedBox(height: 12),
-                              _input(controller: _jobController, label: 'Job Title', icon: Icons.work),
+                              _input(controller: _jobController, label: 'Your Job Title', icon: Icons.work),
+                              const SizedBox(height: 12),
+                              // Country input for small screens (editable)
+                              _input(controller: _countryController, label: 'Country', icon: Icons.flag, enabled: true, keyboardType: TextInputType.text),
                               const SizedBox(height: 12),
                               _input(controller: _phoneController, label: 'Phone', icon: Icons.phone, enabled: false, keyboardType: TextInputType.phone),
                             ]);
@@ -2551,11 +2373,10 @@ class _ClientProfileState extends State<ClientProfile>
 
                         const SizedBox(height: 14),
 
-                        _input(controller: _addressController, label: 'Address', icon: Icons.location_on),
+                        _input(controller: _addressController, label: 'Address', enabled: false, icon: Icons.location_on),
 
                         const SizedBox(height: 18),
 
-                        // BEAUTIFIED Save Changes (full-width, gradient, subtle shadow)
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
@@ -2566,7 +2387,6 @@ class _ClientProfileState extends State<ClientProfile>
                               elevation: MaterialStateProperty.all(8),
                               shadowColor: MaterialStateProperty.all(Colors.black.withOpacity(0.18)),
                               backgroundColor: MaterialStateProperty.resolveWith((states) {
-                                // gradient via Ink is not directly supported on ElevatedButton; use a Container below
                                 return Colors.transparent;
                               }),
                             ),
@@ -2604,7 +2424,6 @@ class _ClientProfileState extends State<ClientProfile>
       },
     );
   }
-
 
   Widget _buildPasswordTab() {
     return SingleChildScrollView(
@@ -2819,7 +2638,6 @@ class _ClientProfileState extends State<ClientProfile>
     final propertiesCount = _toInt(profile['properties_count']);
     final totalValue = _toDouble(profile['total_value']);
     final avatarUrl = profile['profile_image'] as String?;
-    // final assigned = profile['assigned_marketer'] as Map<String, dynamic>?;
 
     final dynamic assignedRaw = profile['assigned_marketer'];
     Map<String, dynamic>? assigned;
@@ -2833,17 +2651,6 @@ class _ClientProfileState extends State<ClientProfile>
     } else {
       assigned = null;
     }
-    // final dynamic assignedRaw = profile['assigned_marketer'];
-    // Map<String, dynamic>? assigned;
-    // if (assignedRaw == null) {
-    //   assigned = null;
-    // } else if (assignedRaw is Map<String, dynamic>) {
-    //   assigned = Map<String, dynamic>.from(assignedRaw);
-    // } else if (assignedRaw is Map) {
-    //   assigned = Map<String, dynamic>.from(assignedRaw.map((k, v) => MapEntry(k.toString(), v)));
-    // } else {
-    //   assigned = null;
-    // }
 
 
     return Padding(
@@ -3154,17 +2961,69 @@ class _ClientProfileState extends State<ClientProfile>
   }
 
   Widget _buildMarketerBadge(Map<String, dynamic>? marketer) {
-    if (marketer == null) {
-      return const SizedBox.shrink();
+    if (marketer == null) return const SizedBox.shrink();
+
+    final String name = (marketer['full_name']?.toString().trim().isNotEmpty == true)
+        ? marketer['full_name'].toString().trim()
+        : (marketer['name']?.toString().trim().isNotEmpty == true ? marketer['name'].toString().trim() : 'Not assigned');
+
+    // Grab any of the commonly used keys and trim whitespace
+    String? avatarUrl = (marketer['profile_image'] as String?)?.trim();
+    avatarUrl ??= (marketer['avatar'] as String?)?.trim();
+    avatarUrl ??= (marketer['image'] as String?)?.trim();
+
+    bool _looksLikeAbsoluteUrl(String? s) {
+      if (s == null || s.isEmpty) return false;
+      final uri = Uri.tryParse(s);
+      return uri != null && (uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https') || s.startsWith('//'));
     }
 
-    final String name = (marketer['full_name']?.toString().isNotEmpty == true)
-        ? marketer['full_name'].toString()
-        : (marketer['name']?.toString().isNotEmpty == true ? marketer['name'].toString() : 'Not assigned');
+    // If you want to support relative URLs (e.g. "/media/..."), provide a baseUrl from your config.
+    // If you have a global ApiService.baseUrl, you can uncomment and use the block below:
+    //
+    // if (avatarUrl != null && !_looksLikeAbsoluteUrl(avatarUrl)) {
+    //   final prefix = ApiService.baseUrl?.endsWith('/') == true ? ApiService.baseUrl!.substring(0, ApiService.baseUrl!.length - 1) : ApiService.baseUrl ?? '';
+    //   if (prefix.isNotEmpty) {
+    //     avatarUrl = avatarUrl.startsWith('/') ? '$prefix$avatarUrl' : '$prefix/$avatarUrl';
+    //   }
+    // }
 
-    String? avatarUrl = marketer['profile_image'] as String?;
-    avatarUrl ??= marketer['avatar'] as String?;
-    avatarUrl ??= marketer['image'] as String?;
+    // Build avatar widget with safe error handling
+    Widget avatarWidget;
+    if (_looksLikeAbsoluteUrl(avatarUrl)) {
+      avatarWidget = ClipOval(
+        child: Image.network(
+          avatarUrl!,
+          width: 24,
+          height: 24,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, progress) {
+            if (progress == null) return child;
+            return SizedBox(
+              width: 24,
+              height: 24,
+              child: Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  value: progress.expectedTotalBytes != null
+                      ? progress.cumulativeBytesLoaded / (progress.expectedTotalBytes ?? 1)
+                      : null,
+                ),
+              ),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
+            // fallback to local asset if network fails
+            return Image.asset('assets/avater.webp', width: 24, height: 24, fit: BoxFit.cover);
+          },
+        ),
+      );
+    } else {
+      // Not an absolute URL -> use local asset fallback
+      avatarWidget = ClipOval(
+        child: Image.asset('assets/avater.webp', width: 24, height: 24, fit: BoxFit.cover),
+      );
+    }
 
     return AnimatedContainer(
       key: ValueKey(name),
@@ -3187,16 +3046,13 @@ class _ClientProfileState extends State<ClientProfile>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (avatarUrl != null && avatarUrl.isNotEmpty)
-            CircleAvatar(radius: 12, backgroundImage: NetworkImage(avatarUrl))
-          else
-            const CircleAvatar(radius: 12, child: Icon(Icons.person, size: 12)),
+          SizedBox(width: 24, height: 24, child: avatarWidget),
           const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Assigned Marketer',
+                'Your Marketer',
                 style: GoogleFonts.sora(fontSize: 10, color: Colors.white.withOpacity(0.9)),
               ),
               Text(
@@ -3209,7 +3065,6 @@ class _ClientProfileState extends State<ClientProfile>
       ),
     );
   }
-
 
   Widget _buildContactInfoCard(Map<String, dynamic> profile) {
     final email = profile['email'] ?? 'Not specified';
@@ -3245,23 +3100,6 @@ class _ClientProfileState extends State<ClientProfile>
                         fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const Spacer(),
-                  // quick action buttons
-                  IconButton(
-                    tooltip: 'Message',
-                    onPressed: () {
-                      // implement message action
-                    },
-                    icon: const Icon(Icons.message_outlined,
-                        color: Color(0xFF4154F1)),
-                  ),
-                  IconButton(
-                    tooltip: 'Call',
-                    onPressed: () {
-                      // implement call action
-                    },
-                    icon: const Icon(Icons.call_outlined,
-                        color: Color(0xFF10B981)),
-                  ),
                 ],
               ),
               const SizedBox(height: 12),

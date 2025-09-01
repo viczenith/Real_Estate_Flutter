@@ -40,14 +40,14 @@ class _MarketerProfileState extends State<MarketerProfile>
   final _formKey = GlobalKey<FormState>();
   final _passwordFormKey = GlobalKey<FormState>();
 
-  final TextEditingController _fullNameController = TextEditingController();
-  final TextEditingController _aboutController = TextEditingController();
   final TextEditingController _companyController = TextEditingController();
   final TextEditingController _jobController = TextEditingController();
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _aboutController = TextEditingController();
   final TextEditingController _countryController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController(); // read-only per template
-  final TextEditingController _phoneController = TextEditingController(); // read-only per template
-  final TextEditingController _emailController = TextEditingController(); // read-only per template
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
 
   final TextEditingController _currentPasswordController =
       TextEditingController();
@@ -135,10 +135,10 @@ class _MarketerProfileState extends State<MarketerProfile>
       }
       _profileData = Map<String, dynamic>.from(data);
       // prefill controllers
-      _fullNameController.text = _profileData['full_name'] ?? '';
-      _aboutController.text = _profileData['about'] ?? '';
       _companyController.text = _profileData['company'] ?? '';
       _jobController.text = _profileData['job'] ?? '';
+      _fullNameController.text = _profileData['full_name'] ?? '';
+      _aboutController.text = _profileData['about'] ?? '';
       _countryController.text = _profileData['country'] ?? '';
       _addressController.text = _profileData['address'] ?? '';
       _phoneController.text = _profileData['phone'] ?? '';
@@ -150,12 +150,12 @@ class _MarketerProfileState extends State<MarketerProfile>
 
   @override
   void dispose() {
+    _companyController.dispose();
+    _jobController.dispose();
     _tabController.dispose();
     _glowController.dispose();
     _fullNameController.dispose();
     _aboutController.dispose();
-    _companyController.dispose();
-    _jobController.dispose();
     _countryController.dispose();
     _addressController.dispose();
     _phoneController.dispose();
@@ -181,9 +181,9 @@ class _MarketerProfileState extends State<MarketerProfile>
     try {
       final updated = await ApiService().updateMarketerProfileDetails(
         token: widget.token,
-        about: _aboutController.text,
         company: _companyController.text,
         job: _jobController.text,
+        about: _aboutController.text,
         country: _countryController.text,
         profileImage: _imageFile,
       );
@@ -259,10 +259,10 @@ class _MarketerProfileState extends State<MarketerProfile>
         }
 
         // Prefill controllers exactly as done in _loadProfile
-        _fullNameController.text = _profileData['full_name'] ?? '';
-        _aboutController.text = _profileData['about'] ?? '';
         _companyController.text = _profileData['company'] ?? '';
         _jobController.text = _profileData['job'] ?? '';
+        _fullNameController.text = _profileData['full_name'] ?? '';
+        _aboutController.text = _profileData['about'] ?? '';
         _countryController.text = _profileData['country'] ?? '';
         _addressController.text = _profileData['address'] ?? '';
         _phoneController.text = _profileData['phone'] ?? '';
@@ -272,7 +272,6 @@ class _MarketerProfileState extends State<MarketerProfile>
         _imageFile = null;
       });
     } catch (e) {
-      // Optional: show a snackbar (don't rethrow - RefreshIndicator will stop spinner)
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to refresh: $e')),
@@ -281,12 +280,11 @@ class _MarketerProfileState extends State<MarketerProfile>
     }
   }
 
-  // ---------------- UI Builders (match Django template) ----------------
 
   @override
   Widget build(BuildContext context) {
     return AppLayout(
-      pageTitle: 'Marketer Profile',
+      pageTitle: 'Profile',
       token: widget.token,
       side: AppSide.marketer,
       child: AnnotatedRegion<SystemUiOverlayStyle>(
@@ -1092,10 +1090,10 @@ class _MarketerProfileState extends State<MarketerProfile>
 
         final profile = snapshot.data!;
         // ensure controller text (prefill done in _loadProfile but double-check)
-        _fullNameController.text = profile['full_name'] ?? _fullNameController.text;
-        _aboutController.text = profile['about'] ?? _aboutController.text;
         _companyController.text = profile['company'] ?? _companyController.text;
         _jobController.text = profile['job'] ?? _jobController.text;
+        _fullNameController.text = profile['full_name'] ?? _fullNameController.text;
+        _aboutController.text = profile['about'] ?? _aboutController.text;
         _countryController.text = profile['country'] ?? _countryController.text;
         _addressController.text = profile['address'] ?? _addressController.text;
         _phoneController.text = profile['phone'] ?? _phoneController.text;
@@ -1222,7 +1220,7 @@ class _MarketerProfileState extends State<MarketerProfile>
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('About Me', style: GoogleFonts.sora(fontSize: 14, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 8),
-                    _input(controller: _aboutController, label: 'Tell us about yourself', icon: Icons.edit, enabled: true, maxLines: 5, hint: 'e.g. I build beautiful apps and love clean UI...'),
+                    _input(controller: _aboutController, label: 'Your Bio', icon: Icons.edit, enabled: true, maxLines: 5, hint: 'e.g. I build beautiful apps and love clean UI...'),
                     const SizedBox(height: 14),
                     LayoutBuilder(builder: (ctx, constraints) {
                       final twoCol = constraints.maxWidth >= 680;

@@ -21,7 +21,7 @@ import 'package:real_estate_app/admin/models/plot_size_number_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ApiService {
-  final String baseUrl = 'http://10.15.216.208:8000/api';
+  final String baseUrl = 'http://10.54.120.208:8000/api';
 
   /// Login using username and password.
   Future<String> login(String email, String password) async {
@@ -325,23 +325,6 @@ class ApiService {
     }
   }
 
-  /// Fetch a list of estates from the admin estate list endpoint.
-  // Future<List<dynamic>> fetchAdminEstateList(String token) async {
-  //   final url = '$baseUrl/admin/estate-list/';
-  //   final response = await http.get(
-  //     Uri.parse(url),
-  //     headers: {
-  //       'Content-Type': 'application/json',
-  //       'Authorization': 'Token $token',
-  //     },
-  //   );
-  //   if (response.statusCode == 200) {
-  //     return jsonDecode(response.body);
-  //   } else {
-  //     throw Exception('Failed to load admin estates: ${response.body}');
-  //   }
-  // }
-
   /// - Allocation details
   Future<Map<String, dynamic>> fetchEstateFullAllocationDetails(
       String estateId, String token) async {
@@ -379,26 +362,6 @@ class ApiService {
     }
   }
 
-  // Future<void> updateAllocatedPlotForEstate(
-  //     String allocationId,
-  //     Map<String, dynamic> data,
-  //     String token,
-  // ) async {
-  //   final uri = Uri.parse('$baseUrl/update-allocated-plot-for-estate/$allocationId/');
-  //   final response = await http.patch(
-  //     uri,
-  //     headers: {
-  //       'Authorization': 'Token $token',
-  //       'Content-Type': 'application/json',
-  //     },
-  //     body: jsonEncode(data),
-  //   );
-  //   if (response.statusCode != 200) {
-  //     final body = jsonDecode(response.body);
-  //     throw Exception(body);
-  //   }
-  // }
-
   Future<void> updateAllocatedPlotForEstate(
     String allocationId,
     Map<String, dynamic> data,
@@ -422,7 +385,6 @@ class ApiService {
     }
   }
 
-  /// Load estate plots with nested plot size units and plot numbers for dynamic UI updates.
   Future<List<dynamic>> loadPlots(String token, int estateId) async {
     final url = '$baseUrl/load-plots/?estate_id=$estateId';
     final response = await http.get(
@@ -458,8 +420,6 @@ class ApiService {
     }
   }
 
-  /// Download allocation data as CSV.
-  /// The response will contain CSV data that you can handle accordingly.
   Future<http.Response> downloadAllocations(String token, int estateId) async {
     final url = '$baseUrl/download-allocations/?estate_id=$estateId';
     return await http.get(
@@ -1377,177 +1337,6 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> getEstateModalJson(int estateId, {String? token}) async {
-    final url = '$baseUrl/estates/?estate_id=$estateId';
-    final headers = <String, String>{'Content-Type': 'application/json'};
-    if (token != null && token.isNotEmpty) headers['Authorization'] = 'Token $token';
-    final resp = await http.get(Uri.parse(url), headers: headers);
-
-    if (resp.statusCode == 200) {
-      final dynamic decoded = jsonDecode(resp.body);
-      
-      // Handle different response formats
-      if (decoded is Map<String, dynamic>) {
-        return decoded;
-      } else if (decoded is List) {
-        // If it's a list, try to find the estate with matching ID
-        for (var item in decoded) {
-          if (item is Map<String, dynamic> && item['id'] == estateId) {
-            return item;
-          }
-        }
-        return {'sizes': []};
-      } else {
-        return {'sizes': []};
-      }
-    } else {
-      throw Exception('Failed to load estate info: ${resp.statusCode} ${resp.body}');
-    }
-  }
-
-  // Future<Map<String, dynamic>> getEstateModalJson(int estateId, {String? token}) async {
-  //   final url = '$baseUrl/estates/?estate_id=$estateId';
-  //   final headers = <String, String>{'Content-Type': 'application/json'};
-  //   if (token != null && token.isNotEmpty) headers['Authorization'] = 'Token $token';
-  //   final resp = await http.get(Uri.parse(url), headers: headers);
-
-  //   if (resp.statusCode != 200) {
-  //     throw Exception('Failed to load estate info: ${resp.statusCode} ${resp.body}');
-  //   }
-
-  //   final dynamic decoded = jsonDecode(resp.body);
-
-  //   // If the server returned the expected map, normalize and return it
-  //   if (decoded is Map<String, dynamic>) {
-  //     final Map<String, dynamic> data = Map<String, dynamic>.from(decoded);
-
-  //     // keep your existing normalization logic (promo + sizes)
-  //     if (data.containsKey('promo')) data['promo'] = _normalizePromo(data['promo']);
-  //     if (data.containsKey('sizes') && data['sizes'] is List) {
-  //       for (var s in data['sizes']) {
-  //         if (s is Map<String, dynamic>) {
-  //           if (!s.containsKey('discount_pct') && s.containsKey('amount') && data['promo'] != null) {
-  //             final promo = data['promo'];
-  //             final disc = promo is Map<String, dynamic> ? promo['discount_pct'] : null;
-  //             if (disc is num) s['discount_pct'] = disc.round();
-  //           }
-  //         }
-  //       }
-  //     }
-
-  //     return data;
-  //   }
-
-  //   // If the server returned a list, try to interpret it gracefully.
-  //   if (decoded is List) {
-  //     final List list = List.from(decoded);
-
-  //     // If list looks like sizes (elements have 'size' or 'plot_unit_id' or 'amount' or 'current'), wrap into sizes
-  //     final bool looksLikeSizes = list.isNotEmpty &&
-  //         list.first is Map &&
-  //         (list.first.containsKey('size') ||
-  //         list.first.containsKey('plot_unit_id') ||
-  //         list.first.containsKey('amount') ||
-  //         list.first.containsKey('current'));
-
-  //     if (looksLikeSizes) {
-  //       final sizes = list.map((e) => e is Map ? Map<String, dynamic>.from(e) : {'size': e.toString()}).toList();
-  //       return {
-  //         'estate_id': estateId,
-  //         'estate_name': null, // caller can fallback to passed estate.name
-  //         'promo': null,
-  //         'sizes': sizes,
-  //       };
-  //     }
-
-  //     // If list looks like a list of estates (each has id/name), try pick the matching estate or wrap as results
-  //     final bool looksLikeEstates = list.isNotEmpty &&
-  //         list.first is Map &&
-  //         (list.first.containsKey('id') && list.first.containsKey('name'));
-
-  //     if (looksLikeEstates) {
-  //       // try to find the estate that matches requested estateId
-  //       Map<String, dynamic>? found;
-  //       for (var item in list) {
-  //         if (item is Map && (item['id']?.toString() == estateId.toString())) {
-  //           found = Map<String, dynamic>.from(item);
-  //           break;
-  //         }
-  //       }
-  //       if (found != null) {
-  //         // if the found estate has sizes, normalize them
-  //         if (found.containsKey('sizes') && found['sizes'] is List) {
-  //           for (var s in found['sizes']) {
-  //             if (s is Map<String, dynamic>) {
-  //               // attempt to compute discount_pct if missing, etc. — keep simple here
-  //             }
-  //           }
-  //         }
-  //         return found;
-  //       }
-
-  //       // fallback: return as paginated-like map so callers that expect 'results' keep working
-  //       return {
-  //         'results': list.map((e) => e is Map ? Map<String, dynamic>.from(e) : e).toList(),
-  //       };
-  //     }
-
-  //     // Unknown list shape — wrap as results
-  //     return {
-  //       'results': list,
-  //     };
-  //   }
-
-  //   // If we reach here, return an empty-safe structure
-  //   return {
-  //     'sizes': [],
-  //     'promo': null,
-  //     'estate_name': null,
-  //     'estate_id': estateId,
-  //   };
-  // }
-
-  Future<Map<String, dynamic>> listEstates({
-    String? token,
-    int page = 1,
-    String? q,
-  }) async {
-    final qPart = q != null && q.isNotEmpty ? '&q=${Uri.encodeQueryComponent(q)}' : '';
-    final url = '$baseUrl/estates/?page=$page$qPart';
-    final headers = <String, String>{'Content-Type': 'application/json'};
-    if (token != null && token.isNotEmpty) headers['Authorization'] = 'Token $token';
-    final resp = await http.get(Uri.parse(url), headers: headers);
-
-    if (resp.statusCode == 200) {
-      final dynamic decoded = jsonDecode(resp.body);
-      // If server returned a plain list, wrap it into a paginated-like map
-      if (decoded is List) {
-        final List<dynamic> list = List.from(decoded);
-        return {
-          'results': list,
-          'count': list.length,
-          'next': null,
-          'previous': null,
-          'total_pages': 1,
-        };
-      }
-      // If a map already, try keep it as Map<String, dynamic>
-      if (decoded is Map<String, dynamic>) {
-        return decoded;
-      }
-      // Unexpected shape: coerce into map with results if possible
-      return {
-        'results': [],
-        'count': 0,
-        'next': null,
-        'previous': null,
-        'total_pages': 1,
-      };
-    } else {
-      throw Exception('Failed to list estates: ${resp.statusCode} ${resp.body}');
-    }
-  }
-
 
   Future<Map<String, dynamic>> listPromotions({
     String? token,
@@ -1582,23 +1371,6 @@ class ApiService {
       return data;
     } else {
       throw Exception('Failed to load promotions: ${resp.statusCode} ${resp.body}');
-    }
-  }
-
-  Future<List<dynamic>> listActivePromotions({String? token}) async {
-    final url = '$baseUrl/promotions/active/';
-    final headers = <String, String>{'Content-Type': 'application/json'};
-    if (token != null && token.isNotEmpty) headers['Authorization'] = 'Token $token';
-    final resp = await http.get(Uri.parse(url), headers: headers);
-    if (resp.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(resp.body) as List<dynamic>;
-      for (var i = 0; i < data.length; i++) {
-        final item = data[i];
-        if (item is Map<String, dynamic>) _normalizePromo(item);
-      }
-      return data;
-    } else {
-      throw Exception('Failed to load active promotions: ${resp.statusCode} ${resp.body}');
     }
   }
 
@@ -1684,6 +1456,213 @@ class ApiService {
   }
 
 
+  Future<Map<String, dynamic>> listEstates({
+      String? token,
+      int page = 1,
+      String? q,
+    }) async {
+      final qPart = q != null && q.isNotEmpty ? '&q=${Uri.encodeQueryComponent(q)}' : '';
+      final url = '$baseUrl/estates/?page=$page$qPart';
+      final headers = {
+        'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Token $token',
+      };
+
+      final resp = await http.get(Uri.parse(url), headers: headers);
+      if (resp.statusCode != 200) {
+        throw Exception('Failed to list estates: ${resp.statusCode} ${resp.body}');
+      }
+      final dynamic decoded = jsonDecode(resp.body);
+
+      // If server returned a plain list, wrap it
+      if (decoded is List) {
+        final list = List<dynamic>.from(decoded);
+        // ensure each estate is a Map
+        final normalized = list.map((e) {
+          if (e is Map) return Map<String, dynamic>.from(e);
+          return {'id': null, 'name': e?.toString()};
+        }).toList();
+        return {
+          'results': normalized,
+          'count': normalized.length,
+          'next': null,
+          'previous': null,
+          'total_pages': 1,
+        };
+      }
+
+      if (decoded is Map<String, dynamic>) {
+        // common paginated case
+        if (decoded.containsKey('results') && decoded['results'] is List) {
+          final results = (decoded['results'] as List).map((e) {
+            if (e is Map) return Map<String, dynamic>.from(e);
+            return {'id': null, 'name': e?.toString()};
+          }).toList();
+          final out = Map<String, dynamic>.from(decoded);
+          out['results'] = results;
+          return out;
+        } else {
+          // maybe single object (coerce to results)
+          if (decoded.containsKey('id') || decoded.containsKey('name')) {
+            return {
+              'results': [decoded],
+              'count': 1,
+              'next': null,
+              'previous': null,
+              'total_pages': 1,
+            };
+          }
+          // unexpected map
+          return {
+            'results': [],
+            'count': 0,
+            'next': null,
+            'previous': null,
+            'total_pages': 1,
+          };
+        }
+      }
+
+      // fallback
+      return {
+        'results': [],
+        'count': 0,
+        'next': null,
+        'previous': null,
+        'total_pages': 1,
+      };
+    }
+
+  Future<List<dynamic>> listActivePromotions({String? token}) async {
+    final url = '$baseUrl/promotions/active/';
+    final headers = {
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Token $token',
+    };
+
+    final resp = await http.get(Uri.parse(url), headers: headers);
+    if (resp.statusCode != 200) {
+      throw Exception('Failed to load active promotions: ${resp.statusCode} ${resp.body}');
+    }
+    final dynamic decoded = jsonDecode(resp.body);
+    if (decoded is List) {
+      return decoded.map((e) => e is Map ? Map<String, dynamic>.from(e) : e).toList();
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>> getEstateModalJson(int estateId, {String? token}) async {
+      final url = '$baseUrl/estates/?estate_id=$estateId';
+      final headers = {
+        'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Token $token',
+      };
+
+      final resp = await http.get(Uri.parse(url), headers: headers);
+      if (resp.statusCode != 200) {
+        throw Exception('Failed to load estate info: ${resp.statusCode} ${resp.body}');
+      }
+      final dynamic decoded = jsonDecode(resp.body);
+
+      // If server returned a map with sizes/promo, normalize directly
+      if (decoded is Map) {
+        final Map<String, dynamic> m = Map<String, dynamic>.from(decoded);
+        // if m has 'results' (list), find possible item
+        if (m['results'] is List) {
+          final list = (m['results'] as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+          if (list.isNotEmpty) {
+            // try to find matching id
+            final found = list.firstWhere((e) => e['id'] == estateId, orElse: () => list.first);
+            return _normalizeEstateModalFromServer(found, estateId);
+          }
+        }
+        // server gave single estate map (likely contains sizes/promo)
+        return _normalizeEstateModalFromServer(m, estateId);
+      }
+
+      // If server returned a list, treat as sizes
+      if (decoded is List) {
+        final sizes = decoded.map((s) {
+          if (s is Map) {
+            return Map<String, dynamic>.from(s);
+          }
+          return {'size': s?.toString(), 'amount': null};
+        }).toList();
+        return {
+          'estate_id': estateId,
+          'estate_name': null,
+          'promo': null,
+          'sizes': sizes,
+        };
+      }
+
+      // fallback empty
+      return {
+        'estate_id': estateId,
+        'estate_name': null,
+        'promo': null,
+        'sizes': [],
+      };
+    }
+
+  Map<String, dynamic> _normalizeEstateModalFromServer(Map<String, dynamic> raw, int estateId) {
+    final out = <String, dynamic>{};
+    out['estate_id'] = raw['id'] ?? estateId;
+    out['estate_name'] = raw['name'] ?? raw['estate_name'] ?? raw['estate']?['name'];
+
+    if (raw['promo'] is Map) {
+      final p = Map<String, dynamic>.from(raw['promo']);
+      if (!p.containsKey('discount_pct') && p.containsKey('discount')) {
+        final d = p['discount'];
+        if (d is num) p['discount_pct'] = d.toInt();
+        else {
+          final parsed = int.tryParse(d?.toString() ?? '');
+          if (parsed != null) p['discount_pct'] = parsed;
+        }
+      }
+      out['promo'] = p;
+    } else {
+      out['promo'] = raw['promo'] ?? (raw['promotion'] is Map ? raw['promotion'] : null);
+    }
+
+    // sizes normalization
+    final rawSizes = <dynamic>[];
+    if (raw['sizes'] is List) rawSizes.addAll(raw['sizes']);
+    // sometimes server returns property_prices or results
+    if (raw['property_prices'] is List) rawSizes.addAll(raw['property_prices']);
+    if (raw['results'] is List) rawSizes.addAll(raw['results']);
+
+    final sizes = <Map<String, dynamic>>[];
+    for (var s in rawSizes) {
+      if (s is Map) {
+        final sizeName = s['size'] ?? s['plot_size'] ?? s['plot_unit']?['plot_size']?['size'];
+        double? amount;
+        if (s.containsKey('amount')) amount = (s['amount'] is num) ? (s['amount'] as num).toDouble() : double.tryParse(s['amount']?.toString() ?? '');
+        if (amount == null && s.containsKey('current')) amount = (s['current'] is num) ? (s['current'] as num).toDouble() : double.tryParse(s['current']?.toString() ?? '');
+        double? discounted;
+        if (s.containsKey('discounted')) discounted = (s['discounted'] is num) ? (s['discounted'] as num).toDouble() : double.tryParse(s['discounted']?.toString() ?? '');
+        if (discounted == null && s.containsKey('promo_price')) discounted = (s['promo_price'] is num) ? (s['promo_price'] as num).toDouble() : double.tryParse(s['promo_price']?.toString() ?? '');
+        int? discountPct;
+        if (s['discount_pct'] != null) {
+          final d = s['discount_pct'];
+          if (d is num) discountPct = d.toInt();
+          else discountPct = int.tryParse(d.toString());
+        }
+        sizes.add({
+          'plot_unit_id': s['plot_unit_id'] ?? s['plot_unit']?['id'],
+          'size': sizeName,
+          'amount': amount,
+          'discounted': discounted,
+          'discount_pct': discountPct,
+        });
+      } else {
+        sizes.add({'size': s?.toString(), 'amount': null, 'discounted': null, 'discount_pct': null});
+      }
+    }
+
+    out['sizes'] = sizes;
+    return out;
+  }
 
 
   /// Update client profile
@@ -1997,11 +1976,21 @@ class ApiService {
           marketerImage = am['image'] as String;
         }
 
-        if (marketerImage != null && !marketerImage.startsWith('http')) {
-          final prefix = baseUrl.endsWith('/')
-              ? baseUrl.substring(0, baseUrl.length - 1)
-              : baseUrl;
-          marketerImage = '$prefix$marketerImage';
+        // if (marketerImage != null && !marketerImage.startsWith('http')) {
+        //   final prefix = baseUrl.endsWith('/')
+        //       ? baseUrl.substring(0, baseUrl.length - 1)
+        //       : baseUrl;
+        //   marketerImage = '$prefix$marketerImage';
+        // }
+        // am['profile_image'] = marketerImage;
+        bool _isAbsoluteUrl(String s) {
+          final pattern = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.\-]*://');
+          return pattern.hasMatch(s) || s.startsWith('//');
+        }
+
+        if (marketerImage != null && !_isAbsoluteUrl(marketerImage)) {
+          final prefix = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+          marketerImage = marketerImage.startsWith('/') ? '$prefix$marketerImage' : '$prefix/$marketerImage';
         }
         am['profile_image'] = marketerImage;
 
@@ -2288,56 +2277,6 @@ class ApiService {
     throw Exception('$msg ${resp.body}');
   }
 
-  Future<File> downloadReceiptByReference({
-    required String token,
-    required String reference,
-    void Function(int, int)? onProgress,
-    bool openAfterDownload = true,
-    Duration timeout = const Duration(seconds: 60),
-  }) async {
-    final base = baseUrl.endsWith('/')
-        ? baseUrl.substring(0, baseUrl.length - 1)
-        : baseUrl;
-    final safeRef = Uri.encodeComponent(reference);
-    // Remove '/clients' from the URL
-    final url = '$base/payment/receipt/$safeRef/';
-
-    final dir = await getTemporaryDirectory();
-    final filePath = '${dir.path}/receipt_$safeRef.pdf';
-    final file = File(filePath);
-
-    try {
-      final resp = await _dio.get<List<int>>(
-        url,
-        options: Options(
-          headers: {'Authorization': 'Token $token'},
-          responseType: ResponseType.bytes,
-          validateStatus: (s) => s != null && s < 500,
-        ),
-        onReceiveProgress: (rec, total) {
-          if (onProgress != null) onProgress(rec, total);
-        },
-      ).timeout(timeout);
-
-      final status = resp.statusCode ?? 0;
-      if (status == 200 && resp.data != null && resp.data!.isNotEmpty) {
-        await file.writeAsBytes(resp.data!, flush: true);
-        if (openAfterDownload) await OpenFile.open(file.path);
-        return file;
-      } else if (status == 403) {
-        throw Exception(
-            'Forbidden: you are not allowed to access this receipt (403)');
-      } else if (status == 404) {
-        throw Exception('Receipt not found (404)');
-      } else {
-        final text = resp.data != null ? String.fromCharCodes(resp.data!) : '';
-        throw Exception('Failed to download (status: $status) $text');
-      }
-    } on DioError catch (e) {
-      throw Exception('Network/download error: ${e.message}');
-    }
-  }
-
   Future<File> downloadReceiptByTransactionId({
     required String token,
     required int transactionId,
@@ -2386,6 +2325,195 @@ class ApiService {
       throw Exception('Network/download error: ${e.message}');
     }
   }
+
+  Future<File> _downloadSignedUrlToFile({
+      required String signedUrl,
+      required String fileName,
+      void Function(int, int)? onProgress,
+      bool openAfterDownload = true,
+      Duration timeout = const Duration(seconds: 60),
+    }) async {
+      final dir = await getTemporaryDirectory();
+      final filePath = '${dir.path}/$fileName';
+      final file = File(filePath);
+
+      try {
+        final resp = await _dio.get<List<int>>(
+          signedUrl,
+          options: Options(
+            responseType: ResponseType.bytes,
+            validateStatus: (s) => s != null && s < 500,
+          ),
+          onReceiveProgress: (rec, total) {
+            if (onProgress != null) onProgress(rec, total);
+          },
+        ).timeout(timeout);
+
+        final status = resp.statusCode ?? 0;
+        if (status == 200 && resp.data != null && resp.data!.isNotEmpty) {
+          await file.writeAsBytes(resp.data!, flush: true);
+          if (openAfterDownload) await OpenFile.open(file.path);
+          return file;
+        } else if (status == 404) {
+          throw Exception('notfound');
+        } else {
+          final text = resp.data != null ? String.fromCharCodes(resp.data!) : '';
+          throw Exception('Failed to download signed url (status: $status) $text');
+        }
+      } on DioError catch (e) {
+        throw Exception('Network/download error (signed url): ${e.message}');
+      }
+    }
+
+  Future<File?> downloadReceiptWithFallback({
+    required String token,
+    String? reference,
+    int? transactionId,
+    void Function(int, int)? onProgress,
+    bool openAfterDownload = true,
+    Duration timeout = const Duration(seconds: 60),
+  }) async {
+    if ((reference == null || reference.isEmpty) && transactionId == null) {
+      throw Exception('Reference or transactionId required');
+    }
+
+    String? ref = reference;
+    if ((ref == null || ref.isEmpty) && transactionId != null) {
+      try {
+        final tx = await getTransactionDetail(token: token, transactionId: transactionId);
+        ref = (tx['reference_code'] ?? tx['receipt_number'] ?? tx['reference'])?.toString();
+      } catch (_) {
+        ref = null;
+      }
+    }
+
+    if (ref == null || ref.isEmpty) {
+      if (transactionId != null) {
+        return await downloadReceiptByTransactionId(
+          token: token,
+          transactionId: transactionId,
+          onProgress: onProgress,
+          openAfterDownload: openAfterDownload,
+          timeout: timeout,
+        );
+      }
+      throw Exception('No reference available to download receipt');
+    }
+
+    final safeRef = ref;
+    final fileName = 'receipt_${Uri.encodeComponent(safeRef)}.pdf';
+
+    // 1) Try direct token-authenticated download (fast, in-app)
+    try {
+      final file = await downloadReceiptByReference(
+        token: token,
+        reference: safeRef,
+        onProgress: onProgress,
+        openAfterDownload: openAfterDownload,
+        timeout: timeout,
+      );
+      return file;
+    } catch (e) {
+      final s = e.toString().toLowerCase();
+      // If error indicates auth problem or headers stripped, fallback to signed-url flow
+      if (s.contains('auth:') || s.contains('401') || s.contains('403') || s.contains('auth')) {
+        // Request signed url from server
+        String? signedUrl;
+        try {
+          signedUrl = await requestReceiptDownloadUrl(token: token, reference: safeRef);
+        } catch (reqErr) {
+          throw Exception('Failed to request signed download URL: $reqErr');
+        }
+
+        if (signedUrl == null || signedUrl.isEmpty) {
+          throw Exception('Signed download URL not returned by server');
+        }
+
+        // Download the signed URL bytes inside the app (no auth header)
+        final file = await _downloadSignedUrlToFile(
+          signedUrl: signedUrl,
+          fileName: fileName,
+          onProgress: onProgress,
+          openAfterDownload: openAfterDownload,
+          timeout: timeout,
+        );
+        return file;
+      }
+
+      // If not an auth error, rethrow so caller can handle (maybe 'notfound', network issues, etc.)
+      rethrow;
+    }
+  }
+
+  Future<String?> requestReceiptDownloadUrl({
+      required String token,
+      required String reference,
+      Duration timeout = const Duration(seconds: 15),
+    }) async {
+      final uri = Uri.parse('$baseUrl/clients/receipts/request-download/');
+      final resp = await http.post(uri,
+          headers: {
+            'Authorization': 'Token $token',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({'reference': reference})
+      ).timeout(timeout);
+
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        return data['download_url'] as String?;
+      }
+
+      throw Exception('Failed to request signed download URL: ${resp.statusCode} ${resp.body}');
+    }
+
+  Future<File> downloadReceiptByReference({
+    required String token,
+    required String reference,
+    void Function(int, int)? onProgress,
+    bool openAfterDownload = true,
+    Duration timeout = const Duration(seconds: 60),
+  }) async {
+    final base = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    final safeRef = Uri.encodeComponent(reference);
+    final url = '$base/clients/receipts/download/?reference=$safeRef';
+
+    final dir = await getTemporaryDirectory();
+    final filePath = '${dir.path}/receipt_$safeRef.pdf';
+    final file = File(filePath);
+
+    try {
+      final resp = await _dio.get<List<int>>(
+          url,
+          options: Options(
+            headers: {'Authorization': 'Token $token'},
+            responseType: ResponseType.bytes,
+            validateStatus: (s) => s != null && s < 500,
+          ),
+          onReceiveProgress: (rec, total) {
+            if (onProgress != null) onProgress(rec, total);
+          }
+      ).timeout(timeout);
+
+      final status = resp.statusCode ?? 0;
+      if (status == 200 && resp.data != null && resp.data!.isNotEmpty) {
+        await file.writeAsBytes(resp.data!, flush: true);
+        if (openAfterDownload) await OpenFile.open(file.path);
+        return file;
+      } else if (status == 401 || status == 403) {
+        throw Exception('auth:${status}');
+      } else if (status == 404) {
+        throw Exception('notfound');
+      } else {
+        final text = resp.data != null ? String.fromCharCodes(resp.data!) : '';
+        throw Exception('Failed to download (status: $status) $text');
+      }
+    } on DioError catch (e) {
+      throw Exception('Network/download error: ${e.message}');
+    }
+  }
+
 
   // NOTIFICATIONS
   Future<List<dynamic>> getNotifications({
@@ -2940,4 +3068,5 @@ class ApiService {
       throw Exception('Failed to change password');
     }
   }
+
 }

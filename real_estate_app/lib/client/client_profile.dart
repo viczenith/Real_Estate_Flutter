@@ -1397,7 +1397,7 @@ class _ClientProfileState extends State<ClientProfile>
                                         ),
                                       if (receiptRef.isNotEmpty)
                                         IconButton(
-                                          icon: const Icon(Icons.picture_as_pdf),
+                                          icon: const Icon(Icons.download),
                                           tooltip: 'Download receipt PDF',
                                           onPressed: () async {
                                             final api = ApiService();

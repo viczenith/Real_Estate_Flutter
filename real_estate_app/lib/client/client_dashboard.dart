@@ -905,7 +905,7 @@ class _ClientDashboardState extends State<ClientDashboard>
                   itemBuilder: (ctx, i) {
                     final c = displayList[i];
                     return _buildPriceCard(
-                        c); // now guaranteed to be current + deduped
+                        c);
                   },
                 ),
               );
@@ -3121,7 +3121,7 @@ class _EstatesListPageState extends State<EstatesListPage>
                 ],
               ),
             ),
-          Expanded(
+            Expanded(
             child: LayoutBuilder(builder: (context, constraints) {
               final width = constraints.maxWidth;
               final crossAxisCount = width > 1000 ? 3 : (width > 600 ? 2 : 1);
@@ -3146,13 +3146,6 @@ class _EstatesListPageState extends State<EstatesListPage>
                   final Map<String, dynamic> map =
                       (estate is Map) ? Map<String, dynamic>.from(estate) : {'name': estate?.toString() ?? 'Estate'};
 
-                  // compute discount from pre-fetched map
-                  final dynamic idRaw = map['id'];
-                  int? estateId;
-                  if (idRaw is num) estateId = idRaw.toInt();
-                  else if (idRaw != null) estateId = int.tryParse(idRaw.toString());
-                  final int? discount = estateId != null ? _estateDiscounts[estateId] : null;
-
                   // build per-item stagger animation
                   final start = (i * 0.05).clamp(0.0, 0.9);
                   final end = (start + 0.6).clamp(0.0, 1.0);
@@ -3166,10 +3159,10 @@ class _EstatesListPageState extends State<EstatesListPage>
                     animation: anim,
                     map: map,
                     addedDate: _formatAddedDate(map['created_at'] ?? map['date_added'] ?? map['date'] ?? map['added_at']),
-                    discount: discount,
                     onTap: () => _showEstateSizesModal(map),
                   );
                 },
+                              
               );
             }),
           ),
@@ -3179,7 +3172,7 @@ class _EstatesListPageState extends State<EstatesListPage>
       ),
     );
   }
-
+  
   Widget _buildSearchBar() {
     return Container(
       decoration: BoxDecoration(
@@ -3290,7 +3283,6 @@ class AnimatedEstateCard extends StatelessWidget {
   final Map<String, dynamic> map;
   final VoidCallback onTap;
   final String addedDate;
-  final int? discount;
 
   const AnimatedEstateCard({
     Key? key,
@@ -3298,7 +3290,6 @@ class AnimatedEstateCard extends StatelessWidget {
     required this.map,
     required this.onTap,
     required this.addedDate,
-    this.discount,
   }) : super(key: key);
 
   @override
@@ -3319,7 +3310,6 @@ class AnimatedEstateCard extends StatelessWidget {
             map: map,
             onTap: onTap,
             addedDate: addedDate,
-            discount: discount,
           ),
         ),
       ),
@@ -3327,21 +3317,16 @@ class AnimatedEstateCard extends StatelessWidget {
   }
 }
 
-// ---------------------------
-// Estate Card
-// ---------------------------
 class _EstateCard extends StatefulWidget {
   final Map<String, dynamic> map;
   final VoidCallback onTap;
   final String addedDate;
-  final int? discount;
 
   const _EstateCard({
     Key? key,
     required this.map,
     required this.onTap,
     required this.addedDate,
-    this.discount,
   }) : super(key: key);
 
   @override
@@ -3350,6 +3335,28 @@ class _EstateCard extends StatefulWidget {
 
 class _EstateCardState extends State<_EstateCard> {
   bool _isHovering = false;
+  List<dynamic> _promotionalOffers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _extractPromotionalOffers();
+  }
+
+  void _extractPromotionalOffers() {
+    // Extract promotional offers from various possible fields in the API response
+    final promos = widget.map['promotional_offers'] ?? 
+                  widget.map['promotionalOffers'] ?? 
+                  widget.map['promos'] ?? 
+                  widget.map['promotions'] ?? 
+                  [];
+    
+    if (promos is List) {
+      setState(() {
+        _promotionalOffers = promos;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3477,29 +3484,37 @@ class _EstateCardState extends State<_EstateCard> {
                   ],
                 ),
 
-                // Discount badge
-                if (widget.discount != null && widget.discount! > 0)
+                // Promotional offers badges - FIXED: Properly extract and display promo badges
+                if (_promotionalOffers.isNotEmpty)
                   Positioned(
                     top: 12,
                     right: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFF7A7A), Color(0xFFFFB46B)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '-${widget.discount}%',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // show up to 3 badges
+                        for (var i = 0; i < _promotionalOffers.length && i < 3; i++) ...[
+                          _buildPromoBadge(_promotionalOffers[i]),
+                          const SizedBox(width: 6),
+                        ],
+                        // +N more
+                        if (_promotionalOffers.length > 3)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '+${_promotionalOffers.length - 3}',
+                              style: const TextStyle(
+                                color: Colors.black87,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
               ],
@@ -3508,6 +3523,61 @@ class _EstateCardState extends State<_EstateCard> {
         ),
       ),
     );
+  }
+
+  Widget _buildPromoBadge(dynamic promo) {
+    // Extract discount value from various possible fields
+    final dynamic discountValue = promo['discount'] ?? promo['discount_pct'] ?? promo['percent'];
+    final int? discount = discountValue is int 
+        ? discountValue 
+        : (discountValue is num ? discountValue.toInt() : int.tryParse(discountValue.toString()));
+    
+    // Check if promo is active - handle various field names
+    final bool isActive = promo['is_active'] ?? 
+                         promo['active'] ??
+                         (promo['start'] != null && promo['end'] != null 
+                             ? _isPromoActive(promo['start'], promo['end'])
+                             : false);
+
+    if (isActive) {
+      // Active promo (green badge)
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF28A745), // Bootstrap success color
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6)],
+        ),
+        child: Text(
+          '-${discount ?? ''}%',
+          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+      );
+    } else {
+      // Inactive promo (gray badge)
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF6C757D), // Bootstrap secondary color
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          '-${discount ?? ''}%',
+          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+      );
+    }
+  }
+
+  bool _isPromoActive(String startStr, String endStr) {
+    try {
+      final now = DateTime.now();
+      final start = DateTime.parse(startStr);
+      final end = DateTime.parse(endStr);
+      return now.isAfter(start) && now.isBefore(end);
+    } catch (e) {
+      return false;
+    }
   }
 }
 
@@ -3556,75 +3626,64 @@ class _EstateSizesModalState extends State<EstateSizesModal> with SingleTickerPr
     super.dispose();
   }
 
-  
   Future<void> _loadEstateDetails() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() { 
+      _loading = true; 
+      _error = null; 
+    });
+    
     try {
       final idRaw = widget.estate['id'];
       int? estateId;
       if (idRaw is num) estateId = idRaw.toInt();
       else estateId = int.tryParse(idRaw?.toString() ?? '');
+      
       if (estateId == null) throw Exception('Missing estate id');
 
       final resp = await _api.getEstateModalJson(estateId, token: widget.token);
-
+      
+      // Handle different response structures
       Map<String, dynamic> details = {};
-      if (resp is Map<String, dynamic>) details = Map<String, dynamic>.from(resp);
-      else details = {'estate_name': widget.estate['name'], 'sizes': resp, 'promo': null};
-
-      // normalize sizes
-      if (details.containsKey('sizes') && details['sizes'] is List) {
-        final raw = details['sizes'] as List;
-        final List<Map<String, dynamic>> sizesOut = [];
-        for (var s in raw) {
-          if (s is Map) {
-            final sizeName = s['size']?.toString() ?? s['plot_size']?.toString() ?? '';
-            final amount = _toDouble(s['amount'] ?? s['current'] ?? s['price']);
-            final discounted = _toDouble(s['discounted'] ?? s['promo_price'] ?? s['discounted_price']);
-            int? discountPct = _toInt(s['discount_pct'] ?? s['discount']);
-            if (discountPct == null && details['promo'] is Map) discountPct = _toInt((details['promo'] as Map)['discount_pct'] ?? (details['promo'] as Map)['discount']);
-            sizesOut.add({'size': sizeName, 'amount': amount, 'discounted': discounted, 'discount_pct': discountPct});
-          } else {
-            sizesOut.add({'size': s?.toString() ?? '', 'amount': null, 'discounted': null, 'discount_pct': null});
-          }
-        }
-        details['sizes'] = sizesOut;
+      if (resp is Map<String, dynamic>) {
+        details = resp;
       } else {
+        details = {
+          'estate_name': widget.estate['name'],
+          'sizes': resp is List ? resp : [],
+          'promo': null
+        };
+      }
+
+      // Ensure sizes is always a list
+      if (!details.containsKey('sizes') || details['sizes'] is! List) {
         details['sizes'] = [];
       }
 
-      setState(() { _estateDetails = details; });
+      setState(() { 
+        _estateDetails = details;
+        _loading = false;
+      });
     } catch (e) {
-      setState(() { _error = e.toString(); });
-    } finally {
-      setState(() { _loading = false; });
+      setState(() { 
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 
-  double? _toDouble(dynamic v) {
-    if (v == null) return null;
-    if (v is double) return v;
-    if (v is int) return v.toDouble();
-    if (v is String) return double.tryParse(v);
-    return null;
-  }
-
-  int? _toInt(dynamic v) {
-    if (v == null) return null;
-    if (v is int) return v;
-    if (v is double) return v.round();
-    if (v is String) return int.tryParse(v);
-    return null;
-  }
-
-  String _fmtCurrency(dynamic v) {
+  String _formatCurrency(dynamic value) {
+    if (value == null) return 'NO AMOUNT SET';
     try {
-      if (v == null) return 'NO AMOUNT SET';
-      final numVal = (v is num) ? v : num.tryParse(v.toString());
+      final numVal = value is num ? value : double.tryParse(value.toString());
       if (numVal == null) return 'NO AMOUNT SET';
-      return NumberFormat.currency(locale: 'en_NG', symbol: '₦', decimalDigits: 0).format(numVal);
+      
+      return NumberFormat.currency(
+        locale: 'en_NG', 
+        symbol: '₦', 
+        decimalDigits: 0
+      ).format(numVal);
     } catch (_) {
-      return v?.toString() ?? 'NO AMOUNT SET';
+      return 'NO AMOUNT SET';
     }
   }
 
@@ -3636,7 +3695,10 @@ class _EstateSizesModalState extends State<EstateSizesModal> with SingleTickerPr
       child: ScaleTransition(
         scale: _scaleAnimation,
         child: Container(
-          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+            maxWidth: MediaQuery.of(context).size.width * 0.9,
+          ),
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -3658,10 +3720,24 @@ class _EstateSizesModalState extends State<EstateSizesModal> with SingleTickerPr
                 ],
               ),
               const SizedBox(height: 16),
+              
               if (_loading)
                 const Center(child: CircularProgressIndicator())
               else if (_error != null)
-                Center(child: Text('Error: $_error'))
+                Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
+                      const SizedBox(height: 16),
+                      Text('Error: $_error', textAlign: TextAlign.center),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadEstateDetails,
+                        child: const Text('Try Again'),
+                      )
+                    ],
+                  ),
+                )
               else if (_estateDetails == null)
                 const Center(child: Text('No details available'))
               else
@@ -3670,33 +3746,41 @@ class _EstateSizesModalState extends State<EstateSizesModal> with SingleTickerPr
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _estateDetails!['estate_name']?.toString() ?? widget.estate['name']?.toString() ?? '',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        if (_estateDetails!['promo'] != null && 
-                            _estateDetails!['promo'] is Map && 
-                            (_estateDetails!['promo'] as Map)['active'] == true)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.orange.shade100),
-                            ),
-                            child: Text(
-                              'Promotion: -${(_estateDetails!['promo'] as Map)['discount_pct'] ?? (_estateDetails!['promo'] as Map)['discount']}% off',
-                              style: TextStyle(
-                                color: Colors.orange.shade800,
-                                fontWeight: FontWeight.w600,
+                        // Estate name and promo badge
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _estateDetails!['estate_name'] ?? widget.estate['name'] ?? '',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                          ),
+                            if (_estateDetails!['promo'] != null && 
+                                (_estateDetails!['promo']['active'] == true || 
+                                 _estateDetails!['promo']['is_active'] == true))
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '-${_estateDetails!['promo']['discount_pct'] ?? _estateDetails!['promo']['discount']}%',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                         const SizedBox(height: 16),
+
+                        // Plot sizes table
                         const Text(
                           'Available Plot Sizes:',
                           style: TextStyle(
@@ -3705,7 +3789,9 @@ class _EstateSizesModalState extends State<EstateSizesModal> with SingleTickerPr
                           ),
                         ),
                         const SizedBox(height: 12),
-                        if (_estateDetails!['sizes'] is List && (_estateDetails!['sizes'] as List).isNotEmpty)
+
+                        if (_estateDetails!['sizes'] != null && 
+                            (_estateDetails!['sizes'] as List).isNotEmpty)
                           Container(
                             decoration: BoxDecoration(
                               color: Theme.of(context).cardColor,
@@ -3722,9 +3808,8 @@ class _EstateSizesModalState extends State<EstateSizesModal> with SingleTickerPr
                               borderRadius: BorderRadius.circular(12),
                               child: Table(
                                 columnWidths: const {
-                                  0: FlexColumnWidth(2),
+                                  0: FlexColumnWidth(3),
                                   1: FlexColumnWidth(2),
-                                  2: FlexColumnWidth(2)
                                 },
                                 border: TableBorder(
                                   horizontalInside: BorderSide(
@@ -3733,6 +3818,7 @@ class _EstateSizesModalState extends State<EstateSizesModal> with SingleTickerPr
                                   ),
                                 ),
                                 children: [
+                                  // Table header
                                   TableRow(
                                     decoration: BoxDecoration(
                                       color: Theme.of(context).highlightColor,
@@ -3750,53 +3836,83 @@ class _EstateSizesModalState extends State<EstateSizesModal> with SingleTickerPr
                                         child: Text(
                                           'Price',
                                           style: TextStyle(fontWeight: FontWeight.bold),
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: EdgeInsets.all(12.0),
-                                        child: Text(
-                                          'Promo Price',
-                                          style: TextStyle(fontWeight: FontWeight.bold),
+                                          textAlign: TextAlign.end,
                                         ),
                                       ),
                                     ],
                                   ),
+
+                                  // Table rows
                                   for (var size in (_estateDetails!['sizes'] as List))
                                     TableRow(
                                       children: [
+                                        // Size column
                                         Padding(
                                           padding: const EdgeInsets.all(12.0),
                                           child: Text(size['size']?.toString() ?? ''),
                                         ),
+
+                                        // Price column
                                         Padding(
                                           padding: const EdgeInsets.all(12.0),
-                                          child: Text(size['amount'] != null ? _fmtCurrency(size['amount']) : '—'),
-                                        ),
-                                        Padding(
-                                          padding: const EdgeInsets.all(12.0),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              if (size['discounted'] != null)
-                                                Text(
-                                                  _fmtCurrency(size['discounted']),
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.green,
+                                          child: Builder(builder: (_) {
+                                            final amount = size['amount'] ?? size['current'] ?? size['price'];
+                                            final discounted = size['discounted'] ?? size['promo_price'];
+                                            final discountPct = size['discount_pct'] ?? size['discount'];
+                                            
+                                            if (amount == null) {
+                                              return const Text(
+                                                'NO AMOUNT SET',
+                                                textAlign: TextAlign.end,
+                                                style: TextStyle(color: Colors.grey),
+                                              );
+                                            }
+
+                                            if (discounted != null && discountPct != null) {
+                                              // Show discounted price
+                                              return Column(
+                                                crossAxisAlignment: CrossAxisAlignment.end,
+                                                children: [
+                                                  Text(
+                                                    _formatCurrency(discounted),
+                                                    textAlign: TextAlign.end,
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.green,
+                                                    ),
                                                   ),
-                                                )
-                                              else
-                                                const Text('—'),
-                                              if (size['discount_pct'] != null)
-                                                Text(
-                                                  '-${size['discount_pct']}% promo',
-                                                  style: TextStyle(
-                                                    color: Theme.of(context).hintColor,
-                                                    fontSize: 12,
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    _formatCurrency(amount),
+                                                    textAlign: TextAlign.end,
+                                                    style: const TextStyle(
+                                                      decoration: TextDecoration.lineThrough,
+                                                      color: Colors.grey,
+                                                      fontSize: 12,
+                                                    ),
                                                   ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    '-$discountPct% promo',
+                                                    textAlign: TextAlign.end,
+                                                    style: const TextStyle(
+                                                      color: Colors.grey,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            } else {
+                                              // Show regular price
+                                              return Text(
+                                                _formatCurrency(amount),
+                                                textAlign: TextAlign.end,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
                                                 ),
-                                            ],
-                                          ),
+                                              );
+                                            }
+                                          }),
                                         ),
                                       ],
                                     ),
@@ -3827,10 +3943,7 @@ class _EstateSizesModalState extends State<EstateSizesModal> with SingleTickerPr
       ),
     );
   }
-
-  // ... (rest of your existing methods remain exactly the same)
 }
-
 
 // Truncate helper in extension
 extension _StringExt on String {

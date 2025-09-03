@@ -21,7 +21,7 @@ import 'package:real_estate_app/admin/models/plot_size_number_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ApiService {
-  final String baseUrl = 'http://10.54.120.208:8000/api';
+  final String baseUrl = 'http://10.242.51.208:8000/api';
 
   /// Login using username and password.
   Future<String> login(String email, String password) async {
@@ -1552,104 +1552,166 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getEstateModalJson(int estateId, {String? token}) async {
-      final url = '$baseUrl/estates/?estate_id=$estateId';
-      final headers = {
-        'Content-Type': 'application/json',
-        if (token != null && token.isNotEmpty) 'Authorization': 'Token $token',
-      };
+    final url = '$baseUrl/estates/?estate_id=$estateId';
+    final headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Token $token',
+    };
 
-      final resp = await http.get(Uri.parse(url), headers: headers);
-      if (resp.statusCode != 200) {
-        throw Exception('Failed to load estate info: ${resp.statusCode} ${resp.body}');
-      }
-      final dynamic decoded = jsonDecode(resp.body);
+    final resp = await http.get(Uri.parse(url), headers: headers);
+    if (resp.statusCode != 200) {
+      throw Exception('Failed to load estate info: ${resp.statusCode} ${resp.body}');
+    }
 
-      // If server returned a map with sizes/promo, normalize directly
-      if (decoded is Map) {
-        final Map<String, dynamic> m = Map<String, dynamic>.from(decoded);
-        // if m has 'results' (list), find possible item
-        if (m['results'] is List) {
-          final list = (m['results'] as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
-          if (list.isNotEmpty) {
-            // try to find matching id
-            final found = list.firstWhere((e) => e['id'] == estateId, orElse: () => list.first);
-            return _normalizeEstateModalFromServer(found, estateId);
-          }
+    dynamic decoded;
+    try {
+      decoded = jsonDecode(resp.body);
+    } catch (e) {
+      throw Exception('Invalid JSON from server for estate $estateId: $e');
+    }
+
+    // If server returned a map with sizes/promo, normalize directly
+    if (decoded is Map) {
+      final Map<String, dynamic> m = Map<String, dynamic>.from(decoded);
+
+      // if m has 'results' (list), find possible item
+      if (m['results'] is List) {
+        final list = (m['results'] as List)
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+        if (list.isNotEmpty) {
+          final found = list.firstWhere(
+            (e) {
+              try {
+                final dynamic idA = e['id'] ?? e['estate_id'];
+                if (idA == null) return false;
+                // compare both as ints and as strings (defensive)
+                if (idA is num && idA.toInt() == estateId) return true;
+                if (idA is String && idA == estateId.toString()) return true;
+                return false;
+              } catch (_) {
+                return false;
+              }
+            },
+            orElse: () => list.first,
+          );
+
+          return _normalizeEstateModalFromServer(found, estateId);
         }
-        // server gave single estate map (likely contains sizes/promo)
-        return _normalizeEstateModalFromServer(m, estateId);
       }
 
-      // If server returned a list, treat as sizes
-      if (decoded is List) {
-        final sizes = decoded.map((s) {
-          if (s is Map) {
-            return Map<String, dynamic>.from(s);
-          }
-          return {'size': s?.toString(), 'amount': null};
-        }).toList();
-        return {
-          'estate_id': estateId,
-          'estate_name': null,
-          'promo': null,
-          'sizes': sizes,
-        };
-      }
+      // server gave single estate map (likely contains sizes/promo)
+      return _normalizeEstateModalFromServer(m, estateId);
+    }
 
-      // fallback empty
+    // If server returned a list, treat as sizes
+    if (decoded is List) {
+      final sizes = decoded.map((s) {
+        if (s is Map) {
+          return Map<String, dynamic>.from(s);
+        }
+        return {'size': s?.toString(), 'amount': null};
+      }).toList();
       return {
         'estate_id': estateId,
         'estate_name': null,
         'promo': null,
-        'sizes': [],
+        'sizes': sizes,
       };
     }
 
+    // fallback empty
+    return {
+      'estate_id': estateId,
+      'estate_name': null,
+      'promo': null,
+      'sizes': [],
+    };
+  }
+
   Map<String, dynamic> _normalizeEstateModalFromServer(Map<String, dynamic> raw, int estateId) {
     final out = <String, dynamic>{};
-    out['estate_id'] = raw['id'] ?? estateId;
-    out['estate_name'] = raw['name'] ?? raw['estate_name'] ?? raw['estate']?['name'];
 
+    out['estate_id'] = raw['estate_id'] ?? raw['id'] ?? estateId;
+    out['estate_name'] = raw['estate_name'] ?? raw['name'] ?? (raw['estate'] is Map ? raw['estate']['name'] : null);
+
+    // promo normalization
     if (raw['promo'] is Map) {
       final p = Map<String, dynamic>.from(raw['promo']);
       if (!p.containsKey('discount_pct') && p.containsKey('discount')) {
         final d = p['discount'];
-        if (d is num) p['discount_pct'] = d.toInt();
-        else {
+        if (d is num) {
+          p['discount_pct'] = d.toInt();
+        } else {
           final parsed = int.tryParse(d?.toString() ?? '');
           if (parsed != null) p['discount_pct'] = parsed;
         }
       }
       out['promo'] = p;
+    } else if (raw['promotion'] is Map) {
+      out['promo'] = Map<String, dynamic>.from(raw['promotion']);
     } else {
-      out['promo'] = raw['promo'] ?? (raw['promotion'] is Map ? raw['promotion'] : null);
+      out['promo'] = raw['promo'] ?? null;
     }
 
-    // sizes normalization
+    // sizes normalization (accept many shapes)
     final rawSizes = <dynamic>[];
     if (raw['sizes'] is List) rawSizes.addAll(raw['sizes']);
-    // sometimes server returns property_prices or results
     if (raw['property_prices'] is List) rawSizes.addAll(raw['property_prices']);
     if (raw['results'] is List) rawSizes.addAll(raw['results']);
 
     final sizes = <Map<String, dynamic>>[];
     for (var s in rawSizes) {
       if (s is Map) {
-        final sizeName = s['size'] ?? s['plot_size'] ?? s['plot_unit']?['plot_size']?['size'];
-        double? amount;
-        if (s.containsKey('amount')) amount = (s['amount'] is num) ? (s['amount'] as num).toDouble() : double.tryParse(s['amount']?.toString() ?? '');
-        if (amount == null && s.containsKey('current')) amount = (s['current'] is num) ? (s['current'] as num).toDouble() : double.tryParse(s['current']?.toString() ?? '');
-        double? discounted;
-        if (s.containsKey('discounted')) discounted = (s['discounted'] is num) ? (s['discounted'] as num).toDouble() : double.tryParse(s['discounted']?.toString() ?? '');
-        if (discounted == null && s.containsKey('promo_price')) discounted = (s['promo_price'] is num) ? (s['promo_price'] as num).toDouble() : double.tryParse(s['promo_price']?.toString() ?? '');
-        int? discountPct;
-        if (s['discount_pct'] != null) {
-          final d = s['discount_pct'];
-          if (d is num) discountPct = d.toInt();
-          else discountPct = int.tryParse(d.toString());
+        // nested-safe extraction of size name
+        String? sizeName;
+        final dynamic sizeVal = s['size'] ?? s['plot_size'];
+        if (sizeVal != null) {
+          sizeName = sizeVal.toString();
+        } else {
+          final plotUnit = s['plot_unit'];
+          if (plotUnit is Map) {
+            final plotSize = plotUnit['plot_size'];
+            if (plotSize is Map && plotSize['size'] != null) {
+              sizeName = plotSize['size'].toString();
+            }
+          }
         }
+
+        // amount
+        double? amount;
+        if (s.containsKey('amount')) {
+          final a = s['amount'];
+          amount = (a is num) ? a.toDouble() : double.tryParse(a?.toString() ?? '');
+        }
+        if (amount == null && s.containsKey('current')) {
+          final a = s['current'];
+          amount = (a is num) ? a.toDouble() : double.tryParse(a?.toString() ?? '');
+        }
+
+        // discounted / promo price
+        double? discounted;
+        if (s.containsKey('discounted')) {
+          final d = s['discounted'];
+          discounted = (d is num) ? d.toDouble() : double.tryParse(d?.toString() ?? '');
+        }
+        if (discounted == null && s.containsKey('promo_price')) {
+          final d = s['promo_price'];
+          discounted = (d is num) ? d.toDouble() : double.tryParse(d?.toString() ?? '');
+        }
+
+        // discount percent
+        int? discountPct;
+        final dp = s['discount_pct'] ?? s['discount'];
+        if (dp != null) {
+          if (dp is num) discountPct = dp.toInt();
+          else discountPct = int.tryParse(dp.toString());
+        }
+
         sizes.add({
-          'plot_unit_id': s['plot_unit_id'] ?? s['plot_unit']?['id'],
+          'plot_unit_id': s['plot_unit_id'] ?? (s['plot_unit'] is Map ? s['plot_unit']['id'] : null),
           'size': sizeName,
           'amount': amount,
           'discounted': discounted,
@@ -2515,216 +2577,372 @@ class ApiService {
   }
 
 
-  // NOTIFICATIONS
-  Future<List<dynamic>> getNotifications({
+  // =========================
+  // NOTIFICATIONS (CLIENT)
+  // =========================
+  Future<dynamic> fetchClientNotifications({
     required String token,
-    bool? read,
-    Duration timeout = const Duration(seconds: 15),
+    int page = 1,
+    String filter = 'all',
+    String? since,
+    int pageSize = 12,
   }) async {
-    final qp = <String, String>{};
-    if (read != null) qp['read'] = read ? 'true' : 'false';
-
-    final uri = Uri.parse(
-        '$baseUrl/client/notifications/${qp.isNotEmpty ? '?${Uri(queryParameters: qp).query}' : ''}');
-
-    final resp = await http.get(uri, headers: {
-      'Authorization': 'Token $token',
-      'Accept': 'application/json',
-    }).timeout(timeout);
-
-    if (resp.statusCode >= 200 && resp.statusCode < 300) {
-      final decoded = jsonDecode(resp.body);
-      List<dynamic> items = [];
-
-      // Handle common DRF shapes
-      if (decoded is List) {
-        items = decoded;
-      } else if (decoded is Map<String, dynamic>) {
-        if (decoded['results'] is List) {
-          items = decoded['results'];
-        } else if (decoded['data'] is List) {
-          items = decoded['data'];
-        } else if (decoded['notifications'] is List) {
-          items = decoded['notifications'];
-        } else {
-          // sometimes API returns single object -> wrap if it looks like a notification
-          // but prefer returning empty list to avoid surprises
-          items = <dynamic>[];
-        }
-      }
-
-      // Normalize each item to a safe Map<String,dynamic>
-      final normalized = items.map((e) {
-        if (e is Map<String, dynamic>) {
-          return _normalizeUserNotificationMap(Map<String, dynamic>.from(e));
-        }
-        // try to convert Map-like objects
-        if (e is Map) {
-          return _normalizeUserNotificationMap(Map<String, dynamic>.from(
-              e.map((k, v) => MapEntry(k.toString(), v))));
-        }
-        return e;
-      }).toList();
-
-      return normalized;
+    final params = <String, String>{
+      'page': page.toString(),
+      'filter': filter,
+      'page_size': pageSize.toString(),
+    };
+    if (since != null && since.isNotEmpty) {
+      params['since'] = since;
     }
 
-    String msg = 'Failed to load notifications: ${resp.statusCode}';
-    try {
-      final j = jsonDecode(resp.body);
-      if (j is Map && j['detail'] != null) msg = j['detail'].toString();
-    } catch (_) {}
-    throw Exception('$msg ${resp.body}');
-  }
-
-  Future<Map<String, dynamic>> getNotificationDetail({
-    required String token,
-    required int id,
-    Duration timeout = const Duration(seconds: 15),
-  }) async {
-    final uri = Uri.parse('$baseUrl/client/notifications/$id/');
-
-    final resp = await http.get(uri, headers: {
+    final uri = Uri.parse('$baseUrl/client/notifications/').replace(queryParameters: params);
+    final headers = <String, String>{
       'Authorization': 'Token $token',
-      'Accept': 'application/json',
-    }).timeout(timeout);
-
-    if (resp.statusCode == 200) {
-      final Map<String, dynamic> data =
-          jsonDecode(resp.body) as Map<String, dynamic>;
-      return _normalizeUserNotificationMap(Map<String, dynamic>.from(data));
-    }
-
-    String msg = 'Failed to load notification detail: ${resp.statusCode}';
-    try {
-      final j = jsonDecode(resp.body);
-      if (j is Map && j['detail'] != null) msg = j['detail'].toString();
-    } catch (_) {}
-    throw Exception('$msg ${resp.body}');
-  }
-
-  Future<Map<String, dynamic>> markNotificationRead({
-    required String token,
-    required int id,
-    Duration timeout = const Duration(seconds: 15),
-  }) async {
-    final uri = Uri.parse('$baseUrl/client/notifications/$id/mark-read/');
-
-    final resp = await http.post(uri, headers: {
-      'Authorization': 'Token $token',
-      'Accept': 'application/json',
       'Content-Type': 'application/json',
-    }).timeout(timeout);
-
-    if (resp.statusCode >= 200 && resp.statusCode < 300) {
-      if (resp.body.isEmpty) return <String, dynamic>{};
-      try {
-        return jsonDecode(resp.body) as Map<String, dynamic>;
-      } catch (_) {
-        return <String, dynamic>{};
-      }
-    }
-
-    String msg = 'Failed to mark notification read: ${resp.statusCode}';
-    try {
-      final j = jsonDecode(resp.body);
-      if (j is Map && j['detail'] != null) msg = j['detail'].toString();
-    } catch (_) {}
-    throw Exception('$msg ${resp.body}');
-  }
-
-  Future<Map<String, int>> getNotificationStats({
-    required String token,
-    Duration timeout = const Duration(seconds: 15),
-  }) async {
-    final uri = Uri.parse('$baseUrl/client/notifications/stats/');
-
-    final resp = await http.get(uri, headers: {
-      'Authorization': 'Token $token',
       'Accept': 'application/json',
-    }).timeout(timeout);
+    };
 
-    if (resp.statusCode == 200) {
-      final Map<String, dynamic> data =
-          jsonDecode(resp.body) as Map<String, dynamic>;
-      final unread = data['unread'];
-      final read = data['read'];
-      return {
-        'unread': (unread is int) ? unread : int.tryParse('$unread') ?? 0,
-        'read': (read is int) ? read : int.tryParse('$read') ?? 0,
-      };
-    }
-
-    String msg = 'Failed to load notification stats: ${resp.statusCode}';
-    try {
-      final j = jsonDecode(resp.body);
-      if (j is Map && j['detail'] != null) msg = j['detail'].toString();
-    } catch (_) {}
-    throw Exception('$msg ${resp.body}');
+    final resp = await http.get(uri, headers: headers);
+    // reuse existing response handler to ensure consistent exceptions
+    final parsed = await _handleResponse(resp);
+    return parsed;
   }
 
-  Map<String, dynamic> _normalizeUserNotificationMap(Map<String, dynamic> raw) {
-    final m = Map<String, dynamic>.from(raw);
+  Future<Map<String, dynamic>> getClientNotificationDetail({
+    required String token,
+    required int userNotificationId,
+  }) async {
+    final url = '$baseUrl/client/notifications/$userNotificationId/';
+    final resp = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    );
 
-    if (m.containsKey('notification') && m['notification'] is Map) {
-      final n = Map<String, dynamic>.from(m['notification'] as Map);
-      n['title'] = n['title']?.toString() ?? (m['title']?.toString() ?? '');
-      n['message'] =
-          n['message']?.toString() ?? (m['message']?.toString() ?? '');
-      n['created_at'] =
-          n['created_at']?.toString() ?? (m['created_at']?.toString() ?? '');
-      n['notification_type'] = n['notification_type'] ??
-          n['type'] ??
-          m['notification_type'] ??
-          m['type'];
-      m['notification'] = n;
-    } else {
-      // Build fallback nested notification if API returned flattened fields
-      m['notification'] = <String, dynamic>{
-        'id': m['notification_id'] ?? m['id'],
-        'title': m['title']?.toString() ?? '',
-        'message': m['message']?.toString() ?? '',
-        'created_at': m['created_at']?.toString() ?? '',
-        'notification_type': m['notification_type'] ?? m['type'],
-      };
-    }
-
-    // Normalize 'read' to boolean
-    final r = m['read'];
-    if (r is bool) {
-      // nothing to do
-    } else if (r is String) {
-      m['read'] = r.toLowerCase() == 'true';
-    } else if (r is num) {
-      m['read'] = r != 0;
-    } else {
-      m['read'] = false;
-    }
-
-    // Normalize any image fields inside nested notification (optional)
-    try {
-      final notif = m['notification'] as Map<String, dynamic>;
-      for (final k in [
-        'profile_image',
-        'image',
-        'floor_plan_image',
-        'prototype_image'
-      ]) {
-        if (notif.containsKey(k) && notif[k] is String) {
-          final s = notif[k] as String;
-          if (s.isNotEmpty && !s.startsWith('http')) {
-            final prefix = baseUrl.endsWith('/')
-                ? baseUrl.substring(0, baseUrl.length - 1)
-                : baseUrl;
-            notif[k] = '$prefix$s';
-          }
-        }
-      }
-      m['notification'] = notif;
-    } catch (_) {}
-
-    return m;
+    final parsed = await _handleResponse(resp);
+    return Map<String, dynamic>.from(parsed as Map);
   }
+
+  Future<Map<String, dynamic>> getClientUnreadCounts(String token) async {
+    final url = '$baseUrl/client/notifications/unread-count/';
+    final resp = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    final parsed = await _handleResponse(resp);
+    // ensure ints
+    final Map<String, dynamic> map = Map<String, dynamic>.from(parsed as Map);
+    map['unread'] = (map['unread'] is int) ? map['unread'] : int.tryParse(map['unread']?.toString() ?? '0') ?? 0;
+    map['total'] = (map['total'] is int) ? map['total'] : int.tryParse(map['total']?.toString() ?? '0') ?? 0;
+    return map;
+  }
+
+  Future<Map<String, dynamic>> markClientNotificationRead({
+    required String token,
+    required int userNotificationId,
+  }) async {
+    final url = '$baseUrl/client/notifications/$userNotificationId/mark-read/';
+    final resp = await http.post(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    final parsed = await _handleResponse(resp);
+    return Map<String, dynamic>.from(parsed as Map);
+  }
+
+  Future<Map<String, dynamic>> markClientNotificationUnread({
+    required String token,
+    required int userNotificationId,
+  }) async {
+    final url = '$baseUrl/client/notifications/$userNotificationId/mark-unread/';
+    final resp = await http.post(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    final parsed = await _handleResponse(resp);
+    return Map<String, dynamic>.from(parsed as Map);
+  }
+
+  Future<Map<String, dynamic>> markClientAllNotificationsRead({
+    required String token,
+  }) async {
+    final url = '$baseUrl/client/notifications/mark-all-read/';
+    final resp = await http.post(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    final parsed = await _handleResponse(resp);
+    return Map<String, dynamic>.from(parsed as Map);
+  }
+
+  Future<dynamic> fetchClientNotificationsSince({
+    required String token,
+    required String sinceIso,
+    int pageSize = 50,
+  }) async {
+    return await fetchClientNotifications(token: token, page: 1, filter: 'all', since: sinceIso, pageSize: pageSize);
+  }
+
+
+
+  // Future<List<dynamic>> getNotifications({
+  //   required String token,
+  //   bool? read,
+  //   Duration timeout = const Duration(seconds: 15),
+  // }) async {
+  //   final qp = <String, String>{};
+  //   if (read != null) qp['read'] = read ? 'true' : 'false';
+
+  //   // Build Uri cleanly (avoid malformed interpolation)
+  //   Uri uri = Uri.parse('$baseUrl/client/notifications/');
+  //   if (qp.isNotEmpty) {
+  //     uri = uri.replace(queryParameters: qp);
+  //   }
+
+  //   final resp = await http.get(uri, headers: {
+  //     'Authorization': 'Token $token',
+  //     'Accept': 'application/json',
+  //   }).timeout(timeout);
+
+  //   if (resp.statusCode >= 200 && resp.statusCode < 300) {
+  //     // If response body empty, return empty list
+  //     if (resp.body.trim().isEmpty) return <dynamic>[];
+
+  //     final decoded = jsonDecode(resp.body);
+  //     List<dynamic> items = [];
+
+  //     // Handle common DRF shapes
+  //     if (decoded is List) {
+  //       items = decoded;
+  //     } else if (decoded is Map<String, dynamic>) {
+  //       if (decoded['results'] is List) {
+  //         items = decoded['results'];
+  //       } else if (decoded['data'] is List) {
+  //         items = decoded['data'];
+  //       } else if (decoded['notifications'] is List) {
+  //         items = decoded['notifications'];
+  //       } else if (decoded.containsKey('id') || decoded.containsKey('notification') || decoded.containsKey('title')) {
+  //         // Single notification object — wrap to list for convenience
+  //         items = [decoded];
+  //       } else {
+  //         // fallback: empty list
+  //         items = <dynamic>[];
+  //       }
+  //     }
+
+  //     // Normalize each item to a safe Map<String,dynamic>
+  //     final normalized = items.map((e) {
+  //       if (e is Map<String, dynamic>) {
+  //         return _normalizeUserNotificationMap(Map<String, dynamic>.from(e));
+  //       }
+  //       // try to convert Map-like objects
+  //       if (e is Map) {
+  //         return _normalizeUserNotificationMap(Map<String, dynamic>.from(
+  //             e.map((k, v) => MapEntry(k.toString(), v))));
+  //       }
+  //       return e;
+  //     }).toList();
+
+  //     return normalized;
+  //   }
+
+  //   String msg = 'Failed to load notifications: ${resp.statusCode}';
+  //   try {
+  //     if (resp.body.trim().isNotEmpty) {
+  //       final j = jsonDecode(resp.body);
+  //       if (j is Map && j['detail'] != null) msg = j['detail'].toString();
+  //     }
+  //   } catch (_) {}
+  //   throw Exception('$msg ${resp.body}');
+  // }
+
+  // Future<Map<String, dynamic>> getNotificationDetail({
+  //   required String token,
+  //   required int id,
+  //   Duration timeout = const Duration(seconds: 15),
+  // }) async {
+  //   final uri = Uri.parse('$baseUrl/client/notifications/$id/');
+
+  //   final resp = await http.get(uri, headers: {
+  //     'Authorization': 'Token $token',
+  //     'Accept': 'application/json',
+  //   }).timeout(timeout);
+
+  //   if (resp.statusCode == 200) {
+  //     if (resp.body.trim().isEmpty) return <String, dynamic>{};
+  //     final Map<String, dynamic> data =
+  //         jsonDecode(resp.body) as Map<String, dynamic>;
+  //     return _normalizeUserNotificationMap(Map<String, dynamic>.from(data));
+  //   }
+
+  //   String msg = 'Failed to load notification detail: ${resp.statusCode}';
+  //   try {
+  //     if (resp.body.trim().isNotEmpty) {
+  //       final j = jsonDecode(resp.body);
+  //       if (j is Map && j['detail'] != null) msg = j['detail'].toString();
+  //     }
+  //   } catch (_) {}
+  //   throw Exception('$msg ${resp.body}');
+  // }
+
+  // Future<Map<String, dynamic>> markNotificationRead({
+  //   required String token,
+  //   required int id,
+  //   Duration timeout = const Duration(seconds: 15),
+  // }) async {
+  //   final uri = Uri.parse('$baseUrl/client/notifications/$id/mark-read/');
+
+  //   final resp = await http.post(uri, headers: {
+  //     'Authorization': 'Token $token',
+  //     'Accept': 'application/json',
+  //     'Content-Type': 'application/json',
+  //   }).timeout(timeout);
+
+  //   if (resp.statusCode >= 200 && resp.statusCode < 300) {
+  //     if (resp.body.trim().isEmpty) return <String, dynamic>{};
+  //     try {
+  //       return jsonDecode(resp.body) as Map<String, dynamic>;
+  //     } catch (_) {
+  //       return <String, dynamic>{};
+  //     }
+  //   }
+
+  //   String msg = 'Failed to mark notification read: ${resp.statusCode}';
+  //   try {
+  //     if (resp.body.trim().isNotEmpty) {
+  //       final j = jsonDecode(resp.body);
+  //       if (j is Map && j['detail'] != null) msg = j['detail'].toString();
+  //     }
+  //   } catch (_) {}
+  //   throw Exception('$msg ${resp.body}');
+  // }
+
+  // Future<Map<String, int>> getNotificationStats({
+  //   required String token,
+  //   Duration timeout = const Duration(seconds: 15),
+  // }) async {
+  //   final uri = Uri.parse('$baseUrl/client/notifications/stats/');
+
+  //   final resp = await http.get(uri, headers: {
+  //     'Authorization': 'Token $token',
+  //     'Accept': 'application/json',
+  //   }).timeout(timeout);
+
+  //   if (resp.statusCode == 200) {
+  //     if (resp.body.trim().isEmpty) return {'unread': 0, 'read': 0};
+  //     final Map<String, dynamic> data =
+  //         jsonDecode(resp.body) as Map<String, dynamic>;
+  //     final unread = data['unread'];
+  //     final read = data['read'];
+  //     return {
+  //       'unread': (unread is int) ? unread : int.tryParse('$unread') ?? 0,
+  //       'read': (read is int) ? read : int.tryParse('$read') ?? 0,
+  //     };
+  //   }
+
+  //   String msg = 'Failed to load notification stats: ${resp.statusCode}';
+  //   try {
+  //     if (resp.body.trim().isNotEmpty) {
+  //       final j = jsonDecode(resp.body);
+  //       if (j is Map && j['detail'] != null) msg = j['detail'].toString();
+  //     }
+  //   } catch (_) {}
+  //   throw Exception('$msg ${resp.body}');
+  // }
+
+  // Map<String, dynamic> _normalizeUserNotificationMap(Map<String, dynamic> raw) {
+  //   // Defensive copy
+  //   final m = Map<String, dynamic>.from(raw);
+
+  //   // If server returned a nested notification object, normalize it
+  //   if (m.containsKey('notification') && m['notification'] is Map) {
+  //     final n = Map<String, dynamic>.from(m['notification'] as Map);
+
+  //     // Ensure title/message/created_at exist on nested object
+  //     n['title'] = n['title']?.toString() ?? (m['title']?.toString() ?? '');
+  //     n['message'] = n['message']?.toString() ?? (m['message']?.toString() ?? '');
+  //     n['created_at'] = n['created_at']?.toString() ?? (m['created_at']?.toString() ?? '');
+
+  //     // primary type value (raw)
+  //     n['notification_type'] = n['notification_type'] ?? n['type'] ?? m['notification_type'] ?? m['type'];
+
+  //     // Ensure a human-friendly display string exists
+  //     if (n['notification_type_display'] == null || (n['notification_type_display'] is String && (n['notification_type_display'] as String).isEmpty)) {
+  //       final fallback = m['notification_type_display'] ??
+  //                       m['get_notification_type_display'] ??
+  //                       n['get_notification_type_display'] ??
+  //                       n['notification_type'];
+  //       n['notification_type_display'] = fallback?.toString() ?? '';
+  //     }
+
+  //     // Propagate any other flattened properties into the nested object (defensive)
+  //     if (m.containsKey('notification_id') && (n['id'] == null)) {
+  //       try {
+  //         n['id'] = m['notification_id'];
+  //       } catch (_) {}
+  //     }
+
+  //     // Normalize some common image keys inside nested notification to absolute URLs
+  //     try {
+  //       final prefix = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+  //       for (final k in ['profile_image', 'image', 'floor_plan_image', 'prototype_image', 'avatar']) {
+  //         if (n.containsKey(k) && n[k] is String) {
+  //           final s = n[k] as String;
+  //           if (s.isNotEmpty && !s.startsWith('http')) {
+  //             n[k] = s.startsWith('/') ? '$prefix$s' : '$prefix/$s';
+  //           }
+  //         }
+  //       }
+  //     } catch (_) {}
+
+  //     m['notification'] = n;
+  //   } else {
+  //     // Build a nested notification object from flattened fields
+  //     m['notification'] = <String, dynamic>{
+  //       'id': m['notification_id'] ?? m['id'],
+  //       'title': m['title']?.toString() ?? '',
+  //       'message': m['message']?.toString() ?? '',
+  //       'created_at': m['created_at']?.toString() ?? '',
+  //       'notification_type': m['notification_type'] ?? m['type'] ?? '',
+  //       'notification_type_display': m['notification_type_display'] ?? m['get_notification_type_display'] ?? (m['notification_type'] ?? m['type']) ?? '',
+  //     };
+  //   }
+
+  //   // Normalize 'read' to boolean on the top-level UserNotification
+  //   final r = m['read'];
+  //   if (r is bool) {
+  //     // ok
+  //   } else if (r is String) {
+  //     m['read'] = r.toLowerCase() == 'true';
+  //   } else if (r is num) {
+  //     m['read'] = r != 0;
+  //   } else {
+  //     m['read'] = false;
+  //   }
+
+  //   return m;
+  // }
+
 
   // MARKETER SIDE
 
@@ -3068,5 +3286,318 @@ class ApiService {
       throw Exception('Failed to change password');
     }
   }
+
+
+  // -------- HEADER API METHODS ----------------
+// Inside ApiService class
+
+/// Validate token and return standard headers for DRF TokenAuthentication.
+/// Throws if token is null/empty so callers get a clear error immediately.
+
+  Map<String, String> _authHeaders(String? token, {String contentType = 'application/json'}) {
+    if (token == null || token.trim().isEmpty) {
+      throw Exception('No auth token provided to ApiService._authHeaders()');
+    }
+    return {
+      'Content-Type': contentType,
+      // DRF TokenAuthentication expects "Token <token>"
+      'Authorization': 'Token ${token.trim()}',
+    };
+  }
+
+  String? _absUrl(String? path) {
+    if (path == null) return null;
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) return null;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    final base = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    if (!trimmed.startsWith('/')) {
+      return '$base/$trimmed';
+    }
+    return '$base$trimmed';
+  }
+
+  // Future<Map<String, dynamic>> getHeaderData({
+  //   required String token,
+  // }) async {
+  //   // validate token early
+  //   final headers = _authHeaders(token);
+
+  //   final url = '$baseUrl/header/header-data/';
+  //   // debug log when running in debug mode
+  //   if (kDebugMode) {
+  //     print('GET $url');
+  //     print('Headers: $headers');
+  //   }
+
+  //   final resp = await http.get(Uri.parse(url), headers: headers);
+
+  //   if (resp.statusCode == 200) {
+  //     final Map<String, dynamic> data = jsonDecode(resp.body) as Map<String, dynamic>;
+
+  //     // Normalize user.profile_image if present
+  //     if (data.containsKey('user') && data['user'] is Map) {
+  //       final user = Map<String, dynamic>.from(data['user'] as Map);
+  //       if (user.containsKey('profile_image') && user['profile_image'] != null) {
+  //         user['profile_image'] = _absUrl(user['profile_image']?.toString());
+  //       }
+  //       data['user'] = user;
+  //     }
+
+  //     // Normalize unread_notifications
+  //     if (data.containsKey('unread_notifications') && data['unread_notifications'] is List) {
+  //       final List list = data['unread_notifications'] as List;
+  //       final normalized = list.map<Map<String, dynamic>>((e) {
+  //         if (e is Map<String, dynamic>) {
+  //           // keep as-is but ensure types are Map<String, dynamic>
+  //           return Map<String, dynamic>.from(e);
+  //         }
+  //         return <String, dynamic>{};
+  //       }).toList();
+  //       data['unread_notifications'] = normalized;
+  //     }
+
+  //     // Normalize unread_clients preview for admin
+  //     if (data.containsKey('unread_clients') && data['unread_clients'] is List) {
+  //       final List clients = data['unread_clients'] as List;
+  //       final normalizedClients = clients.map<Map<String, dynamic>>((c) {
+  //         if (c is Map<String, dynamic>) {
+  //           final copy = Map<String, dynamic>.from(c);
+  //           if (copy.containsKey('profile_image') && copy['profile_image'] != null) {
+  //             copy['profile_image'] = _absUrl(copy['profile_image']?.toString());
+  //           }
+  //           return copy;
+  //         }
+  //         return <String, dynamic>{};
+  //       }).toList();
+  //       data['unread_clients'] = normalizedClients;
+  //     }
+
+  //     return data;
+  //   } else if (resp.statusCode == 401) {
+  //     // helpful message for auth failures
+  //     throw Exception('Authentication failed (401). Server response: ${resp.body}');
+  //   } else {
+  //     throw Exception('Failed to fetch header data: ${resp.statusCode} ${resp.body}');
+  //   }
+  // }
+
+// resilient version of getHeaderData (replace existing)
+Future<Map<String, dynamic>> getHeaderData({
+  required String token,
+}) async {
+  final headers = _authHeaders(token);
+  // candidate endpoint suffixes (order: most likely first)
+  final suffixes = <String>[
+    'header/header-data/',
+    'header-data/',
+    'api/header/header-data/',
+    'api/header-data/',
+    'header/header-data',   // without trailing slash
+    'header-data',          // without trailing slash
+  ];
+
+  // helper to join baseUrl and suffix without double slashes
+  String joinPath(String base, String suffix) {
+    if (base.endsWith('/')) base = base.substring(0, base.length - 1);
+    if (suffix.startsWith('/')) suffix = suffix.substring(1);
+    return '$base/$suffix';
+  }
+
+  // try each candidate
+  for (final suffix in suffixes) {
+    final url = joinPath(baseUrl, suffix);
+    if (kDebugMode) {
+      print('Trying header endpoint: $url');
+    }
+    try {
+      final resp = await http.get(Uri.parse(url), headers: headers);
+      if (resp.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(resp.body) as Map<String, dynamic>;
+
+        // (use your existing normalization code here: profile_image, unread_notifications etc.)
+        if (data.containsKey('user') && data['user'] is Map) {
+          final user = Map<String, dynamic>.from(data['user'] as Map);
+          if (user.containsKey('profile_image') && user['profile_image'] != null) {
+            user['profile_image'] = _absUrl(user['profile_image']?.toString());
+          }
+          data['user'] = user;
+        }
+
+        if (data.containsKey('unread_notifications') && data['unread_notifications'] is List) {
+          final List list = data['unread_notifications'] as List;
+          final normalized = list.map<Map<String, dynamic>>((e) {
+            if (e is Map<String, dynamic>) return Map<String, dynamic>.from(e);
+            return <String, dynamic>{};
+          }).toList();
+          data['unread_notifications'] = normalized;
+        }
+
+        if (data.containsKey('unread_clients') && data['unread_clients'] is List) {
+          final List clients = data['unread_clients'] as List;
+          final normalizedClients = clients.map<Map<String, dynamic>>((c) {
+            if (c is Map<String, dynamic>) {
+              final copy = Map<String, dynamic>.from(c);
+              if (copy.containsKey('profile_image') && copy['profile_image'] != null) {
+                copy['profile_image'] = _absUrl(copy['profile_image']?.toString());
+              }
+              return copy;
+            }
+            return <String, dynamic>{};
+          }).toList();
+          data['unread_clients'] = normalizedClients;
+        }
+
+        return data;
+      } else if (resp.statusCode == 401) {
+        throw Exception('Authentication failed (401). Server response: ${resp.body}');
+      } else if (resp.statusCode == 404) {
+        // try next candidate
+        if (kDebugMode) print('Header endpoint returned 404: $url  — trying next candidate');
+        continue;
+      } else if (resp.statusCode == 204) {
+        return {
+          'total_unread': 0,
+          'total_unread_count': 0,
+          'global_message_count': 0,
+          'unread_admin_count': 0,
+        };
+      } else {
+        // unrecoverable server error — surface it
+        throw Exception('Failed to fetch header data: ${resp.statusCode} ${resp.body}');
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error requesting $suffix: $e');
+      // continue to next candidate (network failure, malformed url, etc.)
+      continue;
+    }
+  }
+
+  // exhausted all candidates
+  throw Exception('Header endpoint not found. Tried multiple candidate paths. Check server routing / baseUrl.');
+}
+
+
+  Future<Map<String, dynamic>> getChatUnreadCount({
+    required String token,
+  }) async {
+    final headers = _authHeaders(token);
+    final url = '$baseUrl/header/chat-unread-count/';
+    if (kDebugMode) {
+      print('GET $url');
+      print('Headers: $headers');
+    }
+
+    final resp = await http.get(Uri.parse(url), headers: headers);
+
+    if (resp.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(resp.body) as Map<String, dynamic>;
+      // default numeric fields to 0 if absent/null
+      data.update('total_unread', (v) => v ?? 0, ifAbsent: () => data['total_unread'] ?? 0);
+      data.update('total_unread_count', (v) => v ?? 0, ifAbsent: () => data['total_unread_count'] ?? 0);
+      data.update('global_message_count', (v) => v ?? 0, ifAbsent: () => data['global_message_count'] ?? 0);
+      data.update('unread_admin_count', (v) => v ?? 0, ifAbsent: () => data['unread_admin_count'] ?? 0);
+      return data;
+    } else if (resp.statusCode == 204) {
+      // no content: return stable zeros
+      return {
+        'total_unread': 0,
+        'total_unread_count': 0,
+        'global_message_count': 0,
+        'unread_admin_count': 0,
+      };
+    } else if (resp.statusCode == 401) {
+      throw Exception('Authentication failed (401). Server response: ${resp.body}');
+    } else {
+      throw Exception('Failed to fetch chat unread count: ${resp.statusCode} ${resp.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getNotifications({
+    required String token,
+  }) async {
+    final headers = _authHeaders(token);
+    final url = '$baseUrl/header/notifications/';
+    if (kDebugMode) {
+      print('GET $url');
+      print('Headers: $headers');
+    }
+
+    final resp = await http.get(Uri.parse(url), headers: headers);
+
+    if (resp.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(resp.body) as List<dynamic>;
+      return data.map<Map<String, dynamic>>((e) {
+        if (e is Map<String, dynamic>) return Map<String, dynamic>.from(e);
+        return <String, dynamic>{};
+      }).toList();
+    } else if (resp.statusCode == 401) {
+      throw Exception('Authentication failed (401). Server response: ${resp.body}');
+    } else {
+      throw Exception('Failed to load notifications: ${resp.statusCode} ${resp.body}');
+    }
+  }
+
+  Future<bool> markNotificationRead({
+    required String token,
+    required int userNotificationId,
+  }) async {
+    final headers = _authHeaders(token);
+    final url = '$baseUrl/header/notifications/mark-read/$userNotificationId/';
+    if (kDebugMode) {
+      print('POST $url');
+      print('Headers: $headers');
+    }
+
+    final resp = await http.post(Uri.parse(url), headers: headers);
+
+    if (resp.statusCode == 200) {
+      return true;
+    } else if (resp.statusCode == 404) {
+      return false;
+    } else if (resp.statusCode == 401) {
+      throw Exception('Authentication failed (401). Server response: ${resp.body}');
+    } else {
+      throw Exception('Failed to mark notification read: ${resp.statusCode} ${resp.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchAdminClientsWithUnread({
+    required String token,
+  }) async {
+    final headers = _authHeaders(token);
+    final url = '$baseUrl/header/admin/clients/unread/';
+    if (kDebugMode) {
+      print('GET $url');
+      print('Headers: $headers');
+    }
+
+    final resp = await http.get(Uri.parse(url), headers: headers);
+
+    if (resp.statusCode == 200) {
+      final Map<String, dynamic> result = jsonDecode(resp.body) as Map<String, dynamic>;
+      final clients = <Map<String, dynamic>>[];
+      if (result.containsKey('clients') && result['clients'] is List) {
+        for (final item in result['clients']) {
+          if (item is Map<String, dynamic>) {
+            if (item.containsKey('profile_image') && item['profile_image'] != null) {
+              item['profile_image'] = _absUrl(item['profile_image']?.toString());
+            }
+            clients.add(Map<String, dynamic>.from(item));
+          }
+        }
+      }
+      return clients;
+    } else if (resp.statusCode == 403) {
+      throw Exception('Forbidden: admin-only endpoint.');
+    } else if (resp.statusCode == 401) {
+      throw Exception('Authentication failed (401). Server response: ${resp.body}');
+    } else {
+      throw Exception('Failed to fetch admin client chat list: ${resp.statusCode} ${resp.body}');
+    }
+  }
+
 
 }

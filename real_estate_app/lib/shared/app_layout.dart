@@ -198,7 +198,7 @@ class _AppLayoutState extends State<AppLayout> {
       appBar: SharedHeader(
         title: widget.pageTitle,
         side: widget.side,
-        onMenuToggle: isLargeScreen ? null : (side) => toggleSidebar(side), token: 'widget.token',
+        onMenuToggle: isLargeScreen ? null : (side) => toggleSidebar(side),
       ),
       body: Row(
         children: [
